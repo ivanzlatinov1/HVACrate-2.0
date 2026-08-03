@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HVACrate2.App/HVACrate2.App.csproj" />
+    <Project Path="src/HVACrate2.Core/HVACrate2.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HVACrate2.Core.Tests/HVACrate2.Core.Tests.csproj" />
+  </Folder>
+</Solution>

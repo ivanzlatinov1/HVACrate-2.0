@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -21,23 +21,23 @@ jobs:
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore HVACrate.sln
+        run: dotnet restore HVACrate2.slnx
 
       - name: Build
-        run: dotnet build HVACrate.sln --configuration Release --no-restore
+        run: dotnet build HVACrate2.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test HVACrate.sln --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test HVACrate2.slnx --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
       - name: Publish test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: '**/test-results.trx'
+          path: "**/test-results.trx"
           retention-days: 14
 
   publish-check:
@@ -51,11 +51,11 @@ jobs:
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Publish single-file (dry run)
         run: >
-          dotnet publish src/HVACrate.App
+          dotnet publish src/HVACrate2.App
           --configuration Release
           --runtime win-x64
           --self-contained true

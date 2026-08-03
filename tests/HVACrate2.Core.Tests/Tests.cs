@@ -6,5 +6,6 @@ public class Tests
     public async Task Example()
     {
         // TODO
+        await Assert.That(true).IsTrue();
     }
 }

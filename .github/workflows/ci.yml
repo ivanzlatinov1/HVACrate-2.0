@@ -30,14 +30,18 @@ jobs:
         run: dotnet build HVACrate2.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test HVACrate2.slnx --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: >
+          dotnet exec tests/HVACrate2.Core.Tests/bin/Release/net10.0/HVACrate2.Core.Tests.dll
+          --report-trx
+          --report-trx-filename test-results.trx
+          --results-directory ./TestResults
 
       - name: Publish test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: "**/test-results.trx"
+          path: TestResults/test-results.trx
           retention-days: 14
 
   publish-check:
@@ -55,7 +59,7 @@ jobs:
 
       - name: Publish single-file (dry run)
         run: >
-          dotnet publish src/HVACrate2.App
+          dotnet publish src/HVACrate.App
           --configuration Release
           --runtime win-x64
           --self-contained true

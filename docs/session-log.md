@@ -152,7 +152,7 @@ strategy after it failed on every real sample tried.
   written cells landed correctly — wall block at row 31 (`C31`..`L31`),
   opening rows starting at row 57 (widths/heights/direction counts all
   correct).
-- Reverted `FloorConfig.cs` test-path edits back to their original
+- Reverted `ProjectConfig.cs` test-path edits back to their original
   placeholder defaults before finishing (only `Program.cs` and
   `HVACrate2.Core.csproj` have real, intentional changes on this
   branch).
@@ -177,6 +177,7 @@ strategy after it failed on every real sample tried.
 ---
 
 ## 2026-08-04 — Session 3 (same branch, `phase1-excel-writing`) —
+
 real Floor I validation, exterior corner count
 
 **Done:**
@@ -223,4 +224,4 @@ real Floor I validation, exterior corner count
   (two commits: Excel-write bug fixes, exterior-corner-count +
   geometric-characteristics block). PR not yet opened — no `gh` CLI
   available in this environment; user to open it manually via
-  https://github.com/ivanzlatinov1/HVACrate-2.0/pull/new/phase1-excel-writing
+  <https://github.com/ivanzlatinov1/HVACrate-2.0/pull/new/phase1-excel-writing>

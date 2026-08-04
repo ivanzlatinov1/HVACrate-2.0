@@ -94,6 +94,7 @@ which resolves this via option (a).
 ---
 
 ## 2026-08-04 — Direct wall-layer/marker extraction abandoned; real
+
 sample files use per-instance blocks, not plain LINE/LWPOLYLINE
 
 **Decision:** the original extraction approach (scan LINE/LWPOLYLINE on
@@ -103,6 +104,7 @@ real sample files and has been replaced (see next entry).
 
 **Reason:** tested against two real samples (`samples/floor1.dxf`,
 `samples/floor2.dxf`), both produced by the user's actual CAD workflow:
+
 - Walls are not plain LINE/LWPOLYLINE on the wall layer. Each wall run
   is its own uniquely-named block (`Wall_1_2`, `Wall_2_2`, ... one block
   definition per instance), placed via a single top-level INSERT with
@@ -133,6 +135,7 @@ cleanly to any dimension seen so far — not used, meaning unclear.
 ---
 
 ## 2026-08-04 — OVK boundary layer: user manually draws the floor's
+
 exterior envelope; extraction is derived from it instead of from wall
 geometry
 
@@ -141,6 +144,7 @@ a single closed polyline on a dedicated layer named `OVK`, one per
 floor DXF (in addition to the existing per-floor DXF split). All of the
 following are now derived from that one polyline instead of from wall
 layer geometry:
+
 - **Wall length by direction** — each edge of the `OVK` polyline is
   bucketed into one of the 8 compass directions by its outward-normal
   direction (see the winding/direction-formula fix below), and summed.
@@ -171,6 +175,7 @@ files from the same project, this is a net reduction in fragility, not
 an increase in manual work.
 
 **Open questions carried forward:**
+
 - Only tested on `floor2.dxf` (one sample). Tolerance (0.5 m) and the
   "nearest edge wins" tie-break are not yet validated against more
   varied floor plans (e.g. a marker equidistant between two OVK edges
@@ -180,12 +185,13 @@ an increase in manual work.
   irrelevant.
 - Whether `OVK` is the right/final name for this layer, and whether it
   should be user-configurable per project like the old wall layer was,
-  is not yet decided — currently hardcoded as `FloorConfig.OvkLayer`
+  is not yet decided — currently hardcoded as `ProjectConfig.OvkLayer`
   default `"OVK"`.
 
 ---
 
 ## 2026-08-04 — Direction formula fixed: was unable to distinguish
+
 opposite-facing walls (e.g. north vs. south)
 
 **Decision:** direction-by-edge is now computed from the edge's true
@@ -197,7 +203,7 @@ resolve which of the two perpendicular directions is "outward" — see
 
 **Reason:** the original formula (`AngleToDirection`, still present in
 the pre-2026-08-04 code) computed a wall's compass direction from its
-*undirected* run angle (`angle % 180`), discarding which of the two
+_undirected_ run angle (`angle % 180`), discarding which of the two
 endpoints came first. This is mathematically incapable of distinguishing
 a horizontal wall on the north side of a building from one on the south
 side (both reduce to the exact same angle), or east from west for
@@ -232,6 +238,7 @@ or rotated (non-zero north angle) floor plan.
 ---
 
 ## 2026-08-04 — `WriteToExcel` tested against a real `.xlsx`; two bugs
+
 found and fixed (`OutputType`, opening-row finder)
 
 **Decision:** ran the full pipeline (`floor2.dxf` → `WriteToExcel`)
@@ -248,8 +255,7 @@ format). Two bugs found and fixed in the process:
    test harness this phase relies on.
 2. **Opening-row finder skipped past the entire empty opening table.**
    `WriteToExcel` located the first free row for writing opening data
-   via `while (!ws.Cell($"A{row}").IsEmpty()) row++;` starting at row
-   57. In the real template, column `A` in that block is **pre-filled
+   via `while (!ws.Cell($"A{row}").IsEmpty()) row++;` starting at row 57. In the real template, column `A` in that block is **pre-filled
    by the template itself** with row index numbers (1, 2, 3, ...) all
    the way to row 91, even though the actual data columns (`B`
    width, `C` height, ...) are empty. The old check treated those
@@ -283,6 +289,7 @@ for `output/` in a future session if this recurs).
 ---
 
 ## 2026-08-04 — Real Floor I validation (`floor1.dxf`); exterior vs.
+
 interior (reflex) corners distinguished; full "geometric
 characteristics" Excel block now written
 

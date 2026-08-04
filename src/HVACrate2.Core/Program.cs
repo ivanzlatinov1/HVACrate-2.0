@@ -49,19 +49,16 @@ public static class Program
         return edges;
     }
 
-    // брой изпъкнали (изходящи навън) ъгли на OVK полигона — reflex
-    // (вдлъбнати) ъгли се броят отделно и не влизат в n. vertices идва с
-    // дублирана затваряща точка в края (както го връща OvkVertices).
     private static int CountConvexCorners(List<(double x, double y)> vertices, double ccwSign)
     {
         int n = vertices.Count - 1;
         int convex = 0;
         for (int i = 0; i < n; i++)
         {
-            var prev = vertices[(i - 1 + n) % n];
+            var (x, y) = vertices[(i - 1 + n) % n];
             var cur = vertices[i];
             var next = vertices[i + 1];
-            double ex1 = cur.x - prev.x, ey1 = cur.y - prev.y;
+            double ex1 = cur.x - x, ey1 = cur.y - y;
             double ex2 = next.x - cur.x, ey2 = next.y - cur.y;
             double cross = ex1 * ey2 - ey1 * ex2;
             if (Math.Sign(cross) == ccwSign || cross == 0)
@@ -168,7 +165,7 @@ public static class Program
     };
 
     private static void WriteToExcel(
-        XLWorkbook wb, FloorConfig cfg,
+        XLWorkbook wb, ProjectConfig cfg,
         double areaM2, double volumeM3, int convexCorners,
         Dictionary<string, double> wallTotals,
         Dictionary<(double w, double h), Dictionary<string, int>> openingGroups)
@@ -218,7 +215,7 @@ public static class Program
 
     public static void Main(string[] args)
     {
-        var cfg = new FloorConfig();
+        var cfg = new ProjectConfig();
 
         var doc = DxfDocument.Load(cfg.DxfPath);
 
@@ -239,19 +236,19 @@ public static class Program
         WriteToExcel(wb, cfg, areaM2, volumeM3, convexCorners, wallTotals, openingGroups);
         wb.Save();
 
-        Console.WriteLine($"OVK ребра (общо {ovkEdges.Count}):");
+        Console.WriteLine($"OVK edges - {ovkEdges.Count}:");
         foreach (var (x1, y1, x2, y2) in ovkEdges)
         {
             double len = Math.Sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
             Console.WriteLine($"  ({x1:F2},{y1:F2}) -> ({x2:F2},{y2:F2})  len={len:F2}  dir={EdgeOutwardDirection(x1, y1, x2, y2, cfg.NorthDeg, ccwSign)}");
         }
 
-        Console.WriteLine("Дължини на стени по посока (по границата OVK):");
+        Console.WriteLine("Outer walls length by direction (layered by the border of OVK polyline):");
         foreach (var (dir, len) in wallTotals)
             Console.WriteLine($"  {dir}: {len:F2} m");
-        Console.WriteLine($"Лице (Af): {areaM2:F2} m2, обем (V, h={cfg.FloorHeightM}m): {volumeM3:F2} m3, външни ъгли n={convexCorners}");
+        Console.WriteLine($"Area (Af): {areaM2:F2} m2, Volume (V, h={cfg.FloorHeightM}m): {volumeM3:F2} m3, Outer Edges n={convexCorners}");
 
-        Console.WriteLine("Прозорци/врати (широчина x височина) -> бр. по посока:");
+        Console.WriteLine("Windows/doors (width x height) -> count on each direction:");
         foreach (var kvp in openingGroups)
             Console.WriteLine($"  {kvp.Key.w}m x {kvp.Key.h}m -> {string.Join(", ", kvp.Value.Where(x => x.Value > 0).Select(x => $"{x.Key}={x.Value}"))}");
     }

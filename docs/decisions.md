@@ -1,0 +1,230 @@
+# Decisions Log — HVACrate 2.0
+
+Short chronological log of significant decisions and why they were made.
+The goal is to avoid re-litigating the same debates later without context.
+
+---
+
+## 2026-08-03 — Technology choice: C# / .NET 10, not Python/JS
+
+**Decision:** the application is built as a desktop WPF application in
+C# / .NET 10, published as a single-file `.exe`.
+
+**Reason:** the end goal is a `.exe` that the user links for download
+from an already-existing static website. Alternatives considered:
+
+- Python script — good for quickly prototyping/validating the logic, but
+  does not easily produce a distributable `.exe` without extra tooling.
+- Static web app (JS in the browser, dxf-parser + SheetJS) — works
+  entirely client-side, no server needed, but the user explicitly
+  preferred a desktop `.exe` over a web interface for a richer UI (WPF)
+  and easier distribution as a link to a binary file.
+
+**Rejected:** a server-based web app with a backend — not needed, since
+the entire process (DXF reading, calculations, Excel writing) can happen
+fully locally, and a server adds unnecessary complexity/hosting cost.
+
+---
+
+## 2026-08-03 — Windows and doors in one combined table
+
+**Decision:** openings (windows and doors) are treated the same — one
+combined table with width/height/count by direction, no split by type.
+
+**Reason:** explicit user instruction — for the purposes of the energy
+assessment the distinction is not needed at this stage.
+
+---
+
+## 2026-08-03 — Input: one DXF file per floor, not a combined Model Space
+
+**Decision:** the application accepts a separate DXF file for each
+floor. The user pre-splits the drawing (e.g. via WBLOCK in AutoCAD from
+the relevant Layout), even for projects where the original DWG has all
+floors drawn together in one Model Space.
+
+**Reason:** analysis of a real project (Brizstroy_Misari.dwg) showed
+that although each floor has its own named Layout (`03 0.00`,
+`04 +2.85`, ...), the actual geometry of all floors lives in one shared
+Model Space, separated only spatially (viewport bounding box).
+Automatic geometric separation by viewport turned out to be fragile and
+hard to verify without live visualization. Manually pre-splitting the
+input is a more reliable and simpler option, even with some manual
+effort from the user.
+
+**Alternative considered and rejected (for now):** automatically
+computing a bounding box from the VIEWPORT entities of each Layout and
+filtering geometry by it. Left as a possible future improvement if it
+can be proven reliable.
+
+---
+
+## 2026-08-03 — Opening dimensions extracted from markers, not block geometry
+
+**Decision:** window/door width and height are read from ATTRIB
+attributes on `W Marker` / `D Marker` INSERT blocks, not from the
+bounding box of the window/door block geometry itself in plan view.
+
+**Reason:** the block geometry in plan (top-down view) only gives an
+X/Y extent (~width), not the height of the opening (not visible in plan
+view). It was found that the marker blocks carry text ATTRIB attributes
+with exactly these two numbers (e.g. "150" for width in cm and "1.7" for
+height in m), which matched manually entered values in the sample
+project.
+
+**Open question:** the attribute index/tag that corresponds to width vs
+height has only been confirmed with one example. Needs additional
+validation against several different markers before it can be relied on
+as stable across projects.
+
+---
+
+## 2026-08-03 — Floor area and volume: still unresolved
+
+**Status:** no final decision made. Requires a closed outline of the
+floor's exterior envelope, which does not always exist as a separate,
+easily identifiable polyline in the drawing. To be addressed in a
+future session, likely via a combination of: (a) looking for a
+dedicated "area boundary" polyline if one exists, or (b) constructing
+an outline from the exterior walls themselves.
+
+**Superseded 2026-08-04** — see "OVK boundary layer" decision below,
+which resolves this via option (a).
+
+---
+
+## 2026-08-04 — Direct wall-layer/marker extraction abandoned; real
+sample files use per-instance blocks, not plain LINE/LWPOLYLINE
+
+**Decision:** the original extraction approach (scan LINE/LWPOLYLINE on
+a named wall layer directly in model space; find window/door data from
+top-level INSERT blocks named `W Marker`/`D Marker`) does not work on
+real sample files and has been replaced (see next entry).
+
+**Reason:** tested against two real samples (`samples/floor1.dxf`,
+`samples/floor2.dxf`), both produced by the user's actual CAD workflow:
+- Walls are not plain LINE/LWPOLYLINE on the wall layer. Each wall run
+  is its own uniquely-named block (`Wall_1_2`, `Wall_2_2`, ... one block
+  definition per instance), placed via a single top-level INSERT with
+  an identity transform (position = block's own base point, rotation 0,
+  scale 1). The block's own geometry already contains absolute/world
+  coordinates, not small local/unit coordinates — i.e. local space and
+  world space coincide for these particular blocks.
+- Window/door `W Marker`/`D Marker` blocks are never inserted at the
+  top level. They are nested one level deeper, inside the specific
+  `Wall_N_2` block that contains the opening. Because of the
+  identity-transform property above, the nested marker's raw
+  `Insert.Position` (as read from the parent block's entity list) can be
+  used directly as its world position — no matrix composition needed
+  for these files.
+- `floor1.dxf` (no `OVK` layer, an early/incomplete sample) had **no**
+  `W Marker`/`D Marker` instances anywhere — confirms doors/windows in
+  this project are optional per drawing and must not be assumed present.
+
+**Also confirmed (real data, `floor2.dxf`):** the marker's ATTRIB tags
+are `AC_MarkerText_2` = width and `AC_MarkerText_3` = height, **both in
+centimeters** (e.g. width=150, height=170 → 1.50m × 1.70m). This
+replaces the earlier, unconfirmed assumption in the marker-extraction
+code (positional index 0/1, height assumed to already be in meters).
+There is also an `AC_WIDO_ID` attribute on window markers (not
+consistently present on door markers) whose value does not correspond
+cleanly to any dimension seen so far — not used, meaning unclear.
+
+---
+
+## 2026-08-04 — OVK boundary layer: user manually draws the floor's
+exterior envelope; extraction is derived from it instead of from wall
+geometry
+
+**Decision:** the user manually traces the floor's exterior envelope as
+a single closed polyline on a dedicated layer named `OVK`, one per
+floor DXF (in addition to the existing per-floor DXF split). All of the
+following are now derived from that one polyline instead of from wall
+layer geometry:
+- **Wall length by direction** — each edge of the `OVK` polyline is
+  bucketed into one of the 8 compass directions by its outward-normal
+  direction (see the winding/direction-formula fix below), and summed.
+- **Floor area (Af)** and **volume (V = Af × h)** — shoelace formula on
+  the `OVK` polygon. This resolves the "Floor area and volume: still
+  unresolved" item above.
+- **Window/door direction** — any `W Marker`/`D Marker` INSERT found
+  anywhere in the document (top-level or nested in any block) is kept
+  only if its position is within a tolerance (currently 0.5 m) of the
+  `OVK` boundary; its direction is taken from the nearest `OVK` edge.
+  Markers farther than the tolerance are treated as interior
+  partitions and dropped. Validated on `floor2.dxf`: an interior door
+  marker ~6–9 m from the boundary was correctly excluded, while
+  exterior markers ~0.25 m from the boundary were correctly kept.
+
+**Reason:** user's proposal, made after direct wall-layer scanning
+repeatedly failed on real files (see previous entry) — walls are drawn
+with inconsistent, per-project/per-CAD-tool internal representations,
+but a manually-traced boundary is simple, always available if the user
+draws it, and — as a bonus — solves the floor area/volume problem for
+free, which the wall-geometry approach never could (no reliable closed
+outline existed from wall geometry alone).
+
+**Trade-off accepted:** one extra small manual step per floor (tracing
+the `OVK` boundary), replacing the wall-layer-name configuration step.
+Given wall geometry has proven unreliable across even two real sample
+files from the same project, this is a net reduction in fragility, not
+an increase in manual work.
+
+**Open questions carried forward:**
+- Only tested on `floor2.dxf` (one sample). Tolerance (0.5 m) and the
+  "nearest edge wins" tie-break are not yet validated against more
+  varied floor plans (e.g. a marker equidistant between two OVK edges
+  at a corner).
+- `AC_WIDO_ID` meaning still unconfirmed — may turn out to be useful
+  (e.g. a family/type ID for future window/door type splitting) or
+  irrelevant.
+- Whether `OVK` is the right/final name for this layer, and whether it
+  should be user-configurable per project like the old wall layer was,
+  is not yet decided — currently hardcoded as `FloorConfig.OvkLayer`
+  default `"OVK"`.
+
+---
+
+## 2026-08-04 — Direction formula fixed: was unable to distinguish
+opposite-facing walls (e.g. north vs. south)
+
+**Decision:** direction-by-edge is now computed from the edge's true
+outward-normal angle, using the `OVK` polygon's overall winding
+(clockwise vs. counter-clockwise, from the sign of the shoelace sum) to
+resolve which of the two perpendicular directions is "outward" — see
+`EdgeOutwardDirection`/`BearingToDirection` in
+`src/HVACrate2.Core/Program.cs`.
+
+**Reason:** the original formula (`AngleToDirection`, still present in
+the pre-2026-08-04 code) computed a wall's compass direction from its
+*undirected* run angle (`angle % 180`), discarding which of the two
+endpoints came first. This is mathematically incapable of distinguishing
+a horizontal wall on the north side of a building from one on the south
+side (both reduce to the exact same angle), or east from west for
+vertical walls. It could therefore never have reproduced the reference
+values in `CLAUDE.md` (N and S both non-zero, E and W both non-zero) —
+this was a **latent, never-actually-validated bug** in the original
+Phase-1 code, not something introduced by the `OVK` change. It surfaced
+immediately when tested against `floor2.dxf`: before the fix, all wall
+length landed in only 3 of 8 buckets (e.g. all north+south length
+lumped under "И"); after the fix, opposite sides split correctly and
+equal-length parallel sides (`С`/`Ю` = 15.80m each) came out equal, as
+expected for a rectangle-derived boundary.
+
+**How it works:** a polygon edge's outward normal is `(dy, -dx)` for a
+counter-clockwise polygon or `(-dy, dx)` for clockwise (rotate the edge
+vector 90° toward the exterior). The resulting normal angle is then
+converted straight to a compass bearing (`BearingToDirection`), with no
+further ambiguity, because — unlike a lone LINE entity — a closed
+polygon's winding order is a global, unambiguous property. This is an
+additional reason the `OVK` boundary approach (previous entry) is more
+robust than direct wall-geometry scanning: a loose collection of wall
+LINE segments has no inherent winding order, so this fix would not have
+been fully applicable to the old approach without extra work (e.g.
+inferring "inside" from wall thickness or adjacency).
+
+**Validated against:** `floor2.dxf` — С=15.80m, Ю=15.80m (equal, as
+expected for parallel sides), И=12.55m, З=12.50m (both close to a
+15.80×12.5 m rectangle-with-a-notch shape, small difference explained
+by the notch, not a bug). Not yet validated against a non-rectangular
+or rotated (non-zero north angle) floor plan.

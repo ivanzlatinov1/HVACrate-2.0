@@ -219,3 +219,8 @@ real Floor I validation, exterior corner count
 - Everything else carried over from Sessions 1–2 (OVK edge cases on
   other floor shapes, rotated/non-zero-north floors, `AC_WIDO_ID`,
   `OvkLayer` configurability, `output/` gitignore) is still open.
+- Pushed branch `phase1-excel-writing` to `origin`
+  (two commits: Excel-write bug fixes, exterior-corner-count +
+  geometric-characteristics block). PR not yet opened — no `gh` CLI
+  available in this environment; user to open it manually via
+  https://github.com/ivanzlatinov1/HVACrate-2.0/pull/new/phase1-excel-writing

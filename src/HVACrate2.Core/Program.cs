@@ -7,11 +7,8 @@ namespace HVACrate2.Core;
 
 public static class Program
 {
-    // ред по посока на часовниковата стрелка, започвайки от север — трябва
-    // да съвпада с реда на DirCols по-долу
     private static readonly string[] DirOrder = ["С", "СИ", "И", "ЮИ", "Ю", "ЮЗ", "З", "СЗ"];
 
-    // ъгъл (математически, 0°=+X/изток, 90°=+Y/север при north=0) -> компасна посока
     private static string BearingToDirection(double mathAngleDeg, double northDeg)
     {
         double bearing = ((90.0 - mathAngleDeg) % 360.0 + 360.0) % 360.0;
@@ -20,11 +17,6 @@ public static class Program
         return DirOrder[idx];
     }
 
-    // посока на "навън" нормалата на ребро от затворен полигон (OVK граница).
-    // ccwSign трябва да идва от общата ориентация (winding) на целия полигон —
-    // само дължината/ъгълът на отделното ребро не е достатъчен, за да се
-    // различи напр. северна от южна стена (двете биха дали еднакъв "неориентиран"
-    // ъгъл).
     private static string EdgeOutwardDirection(double x1, double y1, double x2, double y2, double northDeg, double ccwSign)
     {
         double dx = x2 - x1, dy = y2 - y1;
@@ -42,8 +34,6 @@ public static class Program
         return sum / 2.0;
     }
 
-    // --- граница на етажа (слой OVK), в метри ---
-
     private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer)
     {
         var poly = doc.Entities.Polylines2D.FirstOrDefault(p => p.Layer.Name.Contains(ovkLayer))
@@ -59,6 +49,27 @@ public static class Program
         return edges;
     }
 
+    // брой изпъкнали (изходящи навън) ъгли на OVK полигона — reflex
+    // (вдлъбнати) ъгли се броят отделно и не влизат в n. vertices идва с
+    // дублирана затваряща точка в края (както го връща OvkVertices).
+    private static int CountConvexCorners(List<(double x, double y)> vertices, double ccwSign)
+    {
+        int n = vertices.Count - 1;
+        int convex = 0;
+        for (int i = 0; i < n; i++)
+        {
+            var prev = vertices[(i - 1 + n) % n];
+            var cur = vertices[i];
+            var next = vertices[i + 1];
+            double ex1 = cur.x - prev.x, ey1 = cur.y - prev.y;
+            double ex2 = next.x - cur.x, ey2 = next.y - cur.y;
+            double cross = ex1 * ey2 - ey1 * ex2;
+            if (Math.Sign(cross) == ccwSign || cross == 0)
+                convex++;
+        }
+        return convex;
+    }
+
     private static Dictionary<string, double> WallLengthByDirection(
         List<(double x1, double y1, double x2, double y2)> ovkEdges, double northDeg, double ccwSign)
     {
@@ -71,9 +82,6 @@ public static class Program
         }
         return totals;
     }
-
-    // --- прозорци/врати: маркери (W Marker/D Marker), вложени във всеки блок,
-    // взети за "външни" само ако допират границата OVK ---
 
     private static double DistancePointToSegment(double px, double py, double x1, double y1, double x2, double y2)
     {
@@ -122,7 +130,7 @@ public static class Program
 
             double px = ins.Position.X / 100.0, py = ins.Position.Y / 100.0;
             string? dir = NearestOvkDirection(px, py, ovkEdges, northDeg, ccwSign, toleranceM);
-            if (dir == null) continue; // не допира OVK -> вътрешен отвор, пропуска се
+            if (dir == null) continue;
 
             openings.Add(new Opening
             {
@@ -161,26 +169,34 @@ public static class Program
 
     private static void WriteToExcel(
         XLWorkbook wb, FloorConfig cfg,
+        double areaM2, double volumeM3, int convexCorners,
         Dictionary<string, double> wallTotals,
         Dictionary<(double w, double h), Dictionary<string, int>> openingGroups)
     {
         var ws = wb.Worksheet("Изчисления");
 
+        double totalPerimeter = wallTotals.Values.Sum(v => Math.Round(v, 2));
+
+        int fr = cfg.FloorRow;
+        ws.Cell($"C{fr}").Value = Math.Round(areaM2, 2);
+        ws.Cell($"E{fr}").Value = cfg.FloorHeightM;
+        ws.Cell($"F{fr}").Value = Math.Round(volumeM3, 2);
+        ws.Cell($"G{fr}").Value = Math.Round(totalPerimeter, 2);
+        ws.Cell($"K{fr}").Value = convexCorners;
+
         int r = cfg.WallRow;
         ws.Cell($"C{r}").Value = cfg.FloorHeightM;
-        double totalPerimeter = 0.0;
         foreach (var (dir, col) in DirCols)
         {
             double val = Math.Round(wallTotals.GetValueOrDefault(dir, 0.0), 2);
             if (val > 0)
                 ws.Cell($"{col}{r}").Value = val;
-            totalPerimeter += val;
         }
         ws.Cell($"L{r}").Value = Math.Round(totalPerimeter, 2);
 
         int startRow = 57;
         int row = startRow;
-        while (!ws.Cell($"A{row}").IsEmpty())
+        while (!ws.Cell($"B{row}").IsEmpty())
             row++;
 
         foreach (var kvp in openingGroups)
@@ -202,7 +218,7 @@ public static class Program
 
     public static void Main(string[] args)
     {
-        var cfg = new FloorConfig(); // TODO: зареждане от CLI аргументи / UI форма
+        var cfg = new FloorConfig();
 
         var doc = DxfDocument.Load(cfg.DxfPath);
 
@@ -214,18 +230,26 @@ public static class Program
         var wallTotals = WallLengthByDirection(ovkEdges, cfg.NorthDeg, ccwSign);
         double areaM2 = Math.Abs(signedArea);
         double volumeM3 = areaM2 * cfg.FloorHeightM;
+        int convexCorners = CountConvexCorners(ovkVertices, ccwSign);
 
         var openings = ExtractOpeningsTouchingOvk(doc, ovkEdges, cfg.NorthDeg, ccwSign);
         var openingGroups = GroupOpenings(openings);
 
         using var wb = new XLWorkbook(cfg.ExcelPath);
-        WriteToExcel(wb, cfg, wallTotals, openingGroups);
+        WriteToExcel(wb, cfg, areaM2, volumeM3, convexCorners, wallTotals, openingGroups);
         wb.Save();
+
+        Console.WriteLine($"OVK ребра (общо {ovkEdges.Count}):");
+        foreach (var (x1, y1, x2, y2) in ovkEdges)
+        {
+            double len = Math.Sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+            Console.WriteLine($"  ({x1:F2},{y1:F2}) -> ({x2:F2},{y2:F2})  len={len:F2}  dir={EdgeOutwardDirection(x1, y1, x2, y2, cfg.NorthDeg, ccwSign)}");
+        }
 
         Console.WriteLine("Дължини на стени по посока (по границата OVK):");
         foreach (var (dir, len) in wallTotals)
             Console.WriteLine($"  {dir}: {len:F2} m");
-        Console.WriteLine($"Лице (Af): {areaM2:F2} m2, обем (V, h={cfg.FloorHeightM}m): {volumeM3:F2} m3");
+        Console.WriteLine($"Лице (Af): {areaM2:F2} m2, обем (V, h={cfg.FloorHeightM}m): {volumeM3:F2} m3, външни ъгли n={convexCorners}");
 
         Console.WriteLine("Прозорци/врати (широчина x височина) -> бр. по посока:");
         foreach (var kvp in openingGroups)

@@ -56,7 +56,11 @@ existing Excel template.
 ## Mapping to the Excel template (sheet "Calculations")
 
 - "Geometric characteristics" block, floor row (e.g. A7 = Floor I):
-  `C` = h, `E` = ... (see decisions.md for the full column list).
+  `C` = Af (m2, floor area), `E` = h (m, height), `F` = V (m3,
+  volume), `G` = P (m, perimeter), `H` = Aок (m2, opening area —
+  not yet written), `I` = Аерк (m2, envelope area — not yet
+  written), `J` = Lерк (m, envelope-related length — not yet
+  written), `K` = n (count of exterior/convex corners).
 - "Wall description by facade" block, floor row (e.g. A31 = Floor I):
   `D..K` = lengths by direction N,NE,E,SE,S,SW,W,NW; `L` = perimeter.
 - "Description of transparent doors and windows" block, table starting

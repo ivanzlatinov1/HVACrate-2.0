@@ -121,3 +121,106 @@ strategy after it failed on every real sample tried.
   paths should be removed now that they're unused.
 - Confirm whether `Brizstroy_Misari.dxf`/`floor1.dxf` need to be
   restored to `samples/`.
+
+---
+
+## 2026-08-04 — Session 2 (branch `phase1-excel-writing`)
+
+**Done:**
+
+- Started new branch `phase1-excel-writing` off `main` to close out the
+  remaining Phase 1 item: run `WriteToExcel` against a real `.xlsx`.
+- User pointed to their real working file,
+  `output/Топлотехника V6.0.16.xls` — legacy binary `.xls`, not
+  `.xlsx`. Converted to `.xlsx` via Excel COM automation (PowerShell),
+  since ClosedXML cannot read the old binary format. Confirmed the
+  sheet name (`Изчисления`) matches what `WriteToExcel` expects.
+- Found the real file already holds live project data (not a blank
+  template), so ran the write test against a **scratch copy**, never
+  the original, to avoid destroying real work.
+- Found and fixed two bugs blocking the test (see decisions.md for
+  full detail):
+  1. `HVACrate2.Core.csproj` missing `<OutputType>Exe</OutputType>` —
+     `dotnet run` couldn't execute at all.
+  2. Opening-row finder in `WriteToExcel` checked column `A` for
+     "next free row," but the real template pre-fills `A` with row
+     index numbers regardless of whether the row has real data —
+     would have written into row 93, colliding with the next table's
+     header. Fixed to check column `B` instead.
+- Re-ran the full pipeline (`floor2.dxf` → scratch `.xlsx`) after the
+  fixes: console output matched Session 1's values exactly, and the
+  written cells landed correctly — wall block at row 31 (`C31`..`L31`),
+  opening rows starting at row 57 (widths/heights/direction counts all
+  correct).
+- Reverted `FloorConfig.cs` test-path edits back to their original
+  placeholder defaults before finishing (only `Program.cs` and
+  `HVACrate2.Core.csproj` have real, intentional changes on this
+  branch).
+- Left `output/Топлотехника V6.0.16.xls` and the converted
+  `output/Toplotehnika_V6.0.16.xlsx` untracked (real client data, not
+  committed).
+
+**Open for the next session:**
+
+- Phase 1 is now functionally complete end-to-end (DXF read → OVK
+  extraction → Excel write), pending real-world validation:
+  - Reference-value validation against a real floor with known correct
+    answers is still open — `floor2.dxf` has no independent reference
+    values (see Phase 1 checklist in plan.md).
+  - `output/` is not covered by `.gitignore` — currently relying on
+    the user not staging it; consider adding an explicit rule if this
+    keeps coming up.
+- Everything else carried over from Session 1 (OVK edge cases,
+  `AC_WIDO_ID`, `OvkLayer` configurability, missing sample files) is
+  still open — see above.
+
+---
+
+## 2026-08-04 — Session 3 (same branch, `phase1-excel-writing`) —
+real Floor I validation, exterior corner count
+
+**Done:**
+
+- User replaced `samples/floor2.dxf` with the real
+  `samples/floor1.dxf` — the actual file behind CLAUDE.md's original
+  Floor I reference values.
+- Ran the full pipeline against it: area matched exactly (110.90m² vs.
+  110.9 reference), С/Ю wall lengths matched exactly (9.70m), window #1
+  matched (1.5×1.7 → С=1). И/З came out 12.50m vs. reference 12.55m —
+  user reviewed and accepted this 0.05m gap, not investigated further.
+- Worked out, with the user, what "exterior corner count" (n) actually
+  means: of the OVK boundary's 8 total edges/vertices, 6 are "outer"
+  (face true open exterior) and 2 are "inner" (the two short walls of
+  a small notch on the south side, facing each other rather than open
+  air). Implemented as convex-vs-reflex vertex classification
+  (`CountConvexCorners`, cross-product sign vs. polygon winding).
+  Validated: 6 convex + 2 reflex = 8, matching the user's n=6 exactly.
+  This closes the previously open Phase 2 "exterior corners" item.
+- Found the "Geometric characteristics" Excel block (row 7: Af, h, V,
+  P, n) was never actually being written — only ever printed to the
+  console. Confirmed the real column layout directly from the user's
+  template (it didn't match CLAUDE.md's placeholder note) and wired it
+  into `WriteToExcel`. Corrected CLAUDE.md's Excel mapping section
+  accordingly.
+- Verified the write against a scratch copy of the real template:
+  `C7=110.9, E7=2.89, F7=321, G7=44.4, K7=6` — all correct.
+- Committed the earlier Excel-write bug fixes (missing `OutputType`,
+  opening-row-finder column bug) from Session 2.
+
+**Open for the next session:**
+
+- Columns `H` (Aок, opening area), `I` (Аерк, envelope area), `J`
+  (Lерк) in the geometric-characteristics block are still not written
+  — no calculation exists for them yet.
+- The 0.05m И/З gap against the original reference was accepted by the
+  user but not root-caused — could be a minor OVK-tracing precision
+  issue in the DXF itself, not a code bug (area matches exactly, which
+  wouldn't be true if the underlying geometry itself were wrong).
+- Everything else carried over from Sessions 1–2 (OVK edge cases on
+  other floor shapes, rotated/non-zero-north floors, `AC_WIDO_ID`,
+  `OvkLayer` configurability, `output/` gitignore) is still open.
+- Pushed branch `phase1-excel-writing` to `origin`
+  (two commits: Excel-write bug fixes, exterior-corner-count +
+  geometric-characteristics block). PR not yet opened — no `gh` CLI
+  available in this environment; user to open it manually via
+  https://github.com/ivanzlatinov1/HVACrate-2.0/pull/new/phase1-excel-writing

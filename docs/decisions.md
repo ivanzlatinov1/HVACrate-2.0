@@ -228,3 +228,108 @@ expected for parallel sides), И=12.55m, З=12.50m (both close to a
 15.80×12.5 m rectangle-with-a-notch shape, small difference explained
 by the notch, not a bug). Not yet validated against a non-rectangular
 or rotated (non-zero north angle) floor plan.
+
+---
+
+## 2026-08-04 — `WriteToExcel` tested against a real `.xlsx`; two bugs
+found and fixed (`OutputType`, opening-row finder)
+
+**Decision:** ran the full pipeline (`floor2.dxf` → `WriteToExcel`)
+against a real Excel template for the first time this session, using a
+scratch copy of the user's actual working file
+(`output/Топлотехника V6.0.16.xls`, converted to `.xlsx` via Excel COM
+automation since ClosedXML cannot read the legacy binary `.xls`
+format). Two bugs found and fixed in the process:
+
+1. **`HVACrate2.Core.csproj` was missing `<OutputType>Exe</OutputType>`**
+   — `dotnet run --project src/HVACrate2.Core` failed outright
+   ("Ensure you have a runnable project type... current OutputType is
+   'Library'"). Added it, since `Program.cs`'s `Main` is the console
+   test harness this phase relies on.
+2. **Opening-row finder skipped past the entire empty opening table.**
+   `WriteToExcel` located the first free row for writing opening data
+   via `while (!ws.Cell($"A{row}").IsEmpty()) row++;` starting at row
+   57. In the real template, column `A` in that block is **pre-filled
+   by the template itself** with row index numbers (1, 2, 3, ...) all
+   the way to row 91, even though the actual data columns (`B`
+   width, `C` height, ...) are empty. The old check treated those
+   pre-numbered-but-dataless rows as "already written" and would have
+   started writing real data at row 93 — one row before an unrelated
+   table ("Описание на плътни врати по типове и фасади", starting row
+   94), misplacing/risking clobbering that table's header. Fixed by
+   checking column `B` (an actual data column, never template-prefilled)
+   instead of `A`. Verified after the fix: data for `floor2.dxf` landed
+   correctly starting at row 57, matching the console output byte for
+   byte (widths/heights/direction counts), and the wall block
+   (`C31`..`L31`) wrote correctly for the row-31 (Floor I) slot.
+
+**Important caveat:** this write test was run with `floor2.dxf`'s data
+into the row-7/row-31 slot ("I етаж" / Floor I) purely to validate the
+write mechanics — `floor2.dxf` is **not actually Floor I** of any real
+project and has no known correct row mapping (see the still-open
+"Validation" item in plan.md Phase 1). The write was done on a
+**scratch copy** of the template
+(`C:\Users\XXX\AppData\Local\Temp\claude\...\scratchpad\test_write.xlsx`),
+never on the user's real file in `output/`, specifically because that
+real file already contains live project data in those rows/columns —
+overwriting it with test data would have destroyed real work.
+
+**Not committed:** `output/Топлотехника V6.0.16.xls` and the converted
+`output/Toplotehnika_V6.0.16.xlsx` are real client data, left
+untracked (not covered by `.gitignore` — currently relies on the user
+not `git add`-ing that folder; could add an explicit `.gitignore` rule
+for `output/` in a future session if this recurs).
+
+---
+
+## 2026-08-04 — Real Floor I validation (`floor1.dxf`); exterior vs.
+interior (reflex) corners distinguished; full "geometric
+characteristics" Excel block now written
+
+**Context:** the user replaced `samples/floor2.dxf` with the real
+`samples/floor1.dxf` — the actual Floor I file behind the original
+reference values quoted in CLAUDE.md (Af=110.9m², perimeter 44.5m,
+С=9.7m/И=12.55m/Ю=9.7m/З=12.55m, window #1=1.5×1.7m), which the
+original pre-`OVK` code had never been able to reproduce (see the
+2026-08-04 direction-formula entry above).
+
+**Result of first real run:** area matched exactly (110.90m² vs.
+110.9), С and Ю matched exactly (9.70m), window #1 matched (1.5×1.7 →
+С=1). И and З each came out 12.50m vs. the reference's 12.55m — a
+0.05m gap on each. **User reviewed and explicitly accepted this gap as
+fine** — not investigated further, not treated as a bug.
+
+**Corner-count discussion:** the user initially expected `n=9` "outer
+edges," then self-corrected to `n=6`, then clarified precisely: the
+OVK boundary has **8** total edges, of which **6 are "outer"** (border
+the true open exterior) and **2 are "inner"** — the two short (0.90m)
+walls of a small stepped notch on the south side, which face each
+other across the notch rather than facing open exterior air.
+
+**Decision:** implemented this distinction as **convex vs. reflex
+vertex classification**, not an ad hoc per-edge rule. For each OVK
+vertex, compute the cross product of its incoming and outgoing edge
+vectors; a vertex is convex (exterior corner) if the sign of that
+cross product matches the polygon's overall winding sign (`ccwSign`,
+already computed from the shoelace sum), reflex (interior/notch
+corner) otherwise. See `CountConvexCorners` in
+`src/HVACrate2.Core/Program.cs`.
+
+**Validated against `floor1.dxf`:** of the 8 OVK vertices, exactly 2
+(the notch's inner corners) came out reflex and 6 convex — matching
+the user's `n=6` exactly. This resolves the previously-open Phase 2
+item "Number of exterior corners."
+
+**Also fixed while validating:** the "Geometric characteristics" block
+(row 7 for Floor I: `C`=Af, `E`=h, `F`=V, `G`=P, `K`=n) was never
+actually written to Excel before this session — `WriteToExcel` only
+ever wrote the wall-by-facade block (row 31) and the opening table
+(row 57+); area/volume/perimeter/corner-count existed only as console
+output. `WriteToExcel` now also writes this block. Confirmed the real
+column layout directly from the user's template (previously
+undocumented — CLAUDE.md's placeholder note "`C` = h, `E` = ... see
+decisions.md" was itself wrong/incomplete, now corrected in CLAUDE.md):
+`C`=Af (m²), `E`=h (m), `F`=V (m³), `G`=P (m), `H`=Aок (m², opening
+area), `I`=Аерк (m², envelope area), `J`=Lерк (m), `K`=n (count).
+Columns `H`/`I`/`J` are not yet written — no calculation for them
+exists yet.

@@ -59,7 +59,7 @@ jobs:
 
       - name: Publish single-file (dry run)
         run: >
-          dotnet publish src/HVACrate.App
+          dotnet publish src/HVACrate2.App
           --configuration Release
           --runtime win-x64
           --self-contained true

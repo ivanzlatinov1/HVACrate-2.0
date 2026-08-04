@@ -16,13 +16,13 @@
       block. Tested against a real `.xlsx` (converted from the user's
       real `.xls` template) on a scratch copy — see decisions.md,
       2026-08-04 (row-finder bug fix).
-- [ ] **Validation:** the original reference values (Floor I,
-      N=9.7m/E=12.55m/S=9.7m/W=12.55m, perimeter 44.5m, window #1 =
-      1.5m×1.7m) were never actually reproducible by the original
-      code (see direction-formula bug in decisions.md) and have not
-      been re-validated against a same-floor `OVK`-based run yet —
-      `floor2.dxf` is a different floor with no independent reference
-      values to check against. Still open.
+- [x] **Validation:** re-ran against the real Floor I file
+      (`samples/floor1.dxf`, replacing the earlier placeholder). Area,
+      С/Ю wall lengths, window #1 (1.5×1.7), and exterior corner count
+      (n=6) all matched the original reference exactly. И/З lengths
+      came out 12.50m vs. the reference's 12.55m (0.05m each) — user
+      confirmed this small a gap is not a concern. See decisions.md,
+      2026-08-04 (exterior vs. interior corners).
 
 ## Phase 2 — Open issues from Phase 1
 
@@ -35,9 +35,13 @@
       — likely moot now that wall length comes from the `OVK` polyline
       rather than raw wall geometry; revisit only if `OVK` tracing
       itself ever needs to follow a curved facade
-- [ ] Number of "exterior corners" — not yet addressed. May be
-      derivable from `OVK` polygon vertex angles (interior corners vs.
-      exterior/convex corners), not yet designed
+- [x] Number of "exterior corners" — implemented via convex/reflex
+      vertex classification (`CountConvexCorners`, sign of the
+      cross product of adjacent edges vs. the polygon's overall
+      winding). Validated on `floor1.dxf`: 6 convex (exterior) + 2
+      reflex (interior/notch) = 8 total OVK vertices, matching the
+      user's reference n=6. Written to Excel column `K`, row
+      `FloorRow`. See decisions.md, 2026-08-04.
 - [ ] `AC_WIDO_ID` marker attribute — meaning unconfirmed, not used
 - [ ] `OVK` boundary approach validated on one sample only
       (`floor2.dxf`). Needs testing against more floor plans: a

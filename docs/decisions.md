@@ -279,3 +279,57 @@ overwriting it with test data would have destroyed real work.
 untracked (not covered by `.gitignore` — currently relies on the user
 not `git add`-ing that folder; could add an explicit `.gitignore` rule
 for `output/` in a future session if this recurs).
+
+---
+
+## 2026-08-04 — Real Floor I validation (`floor1.dxf`); exterior vs.
+interior (reflex) corners distinguished; full "geometric
+characteristics" Excel block now written
+
+**Context:** the user replaced `samples/floor2.dxf` with the real
+`samples/floor1.dxf` — the actual Floor I file behind the original
+reference values quoted in CLAUDE.md (Af=110.9m², perimeter 44.5m,
+С=9.7m/И=12.55m/Ю=9.7m/З=12.55m, window #1=1.5×1.7m), which the
+original pre-`OVK` code had never been able to reproduce (see the
+2026-08-04 direction-formula entry above).
+
+**Result of first real run:** area matched exactly (110.90m² vs.
+110.9), С and Ю matched exactly (9.70m), window #1 matched (1.5×1.7 →
+С=1). И and З each came out 12.50m vs. the reference's 12.55m — a
+0.05m gap on each. **User reviewed and explicitly accepted this gap as
+fine** — not investigated further, not treated as a bug.
+
+**Corner-count discussion:** the user initially expected `n=9` "outer
+edges," then self-corrected to `n=6`, then clarified precisely: the
+OVK boundary has **8** total edges, of which **6 are "outer"** (border
+the true open exterior) and **2 are "inner"** — the two short (0.90m)
+walls of a small stepped notch on the south side, which face each
+other across the notch rather than facing open exterior air.
+
+**Decision:** implemented this distinction as **convex vs. reflex
+vertex classification**, not an ad hoc per-edge rule. For each OVK
+vertex, compute the cross product of its incoming and outgoing edge
+vectors; a vertex is convex (exterior corner) if the sign of that
+cross product matches the polygon's overall winding sign (`ccwSign`,
+already computed from the shoelace sum), reflex (interior/notch
+corner) otherwise. See `CountConvexCorners` in
+`src/HVACrate2.Core/Program.cs`.
+
+**Validated against `floor1.dxf`:** of the 8 OVK vertices, exactly 2
+(the notch's inner corners) came out reflex and 6 convex — matching
+the user's `n=6` exactly. This resolves the previously-open Phase 2
+item "Number of exterior corners."
+
+**Also fixed while validating:** the "Geometric characteristics" block
+(row 7 for Floor I: `C`=Af, `E`=h, `F`=V, `G`=P, `K`=n) was never
+actually written to Excel before this session — `WriteToExcel` only
+ever wrote the wall-by-facade block (row 31) and the opening table
+(row 57+); area/volume/perimeter/corner-count existed only as console
+output. `WriteToExcel` now also writes this block. Confirmed the real
+column layout directly from the user's template (previously
+undocumented — CLAUDE.md's placeholder note "`C` = h, `E` = ... see
+decisions.md" was itself wrong/incomplete, now corrected in CLAUDE.md):
+`C`=Af (m²), `E`=h (m), `F`=V (m³), `G`=P (m), `H`=Aок (m², opening
+area), `I`=Аерк (m², envelope area), `J`=Lерк (m), `K`=n (count).
+Columns `H`/`I`/`J` are not yet written — no calculation for them
+exists yet.

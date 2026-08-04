@@ -9,4 +9,5 @@ public class FloorConfig
     public double FloorHeightM { get; set; } = 2.89;
     public double NorthDeg { get; set; } = 0.0;
     public string WallLayer { get; set; } = "_A [walls]";
+    public string OvkLayer { get; set; } = "OVK";
 }

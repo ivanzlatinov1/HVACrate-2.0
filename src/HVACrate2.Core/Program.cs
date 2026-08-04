@@ -7,11 +7,8 @@ namespace HVACrate2.Core;
 
 public static class Program
 {
-    // ред по посока на часовниковата стрелка, започвайки от север — трябва
-    // да съвпада с реда на DirCols по-долу
     private static readonly string[] DirOrder = ["С", "СИ", "И", "ЮИ", "Ю", "ЮЗ", "З", "СЗ"];
 
-    // ъгъл (математически, 0°=+X/изток, 90°=+Y/север при north=0) -> компасна посока
     private static string BearingToDirection(double mathAngleDeg, double northDeg)
     {
         double bearing = ((90.0 - mathAngleDeg) % 360.0 + 360.0) % 360.0;
@@ -20,11 +17,6 @@ public static class Program
         return DirOrder[idx];
     }
 
-    // посока на "навън" нормалата на ребро от затворен полигон (OVK граница).
-    // ccwSign трябва да идва от общата ориентация (winding) на целия полигон —
-    // само дължината/ъгълът на отделното ребро не е достатъчен, за да се
-    // различи напр. северна от южна стена (двете биха дали еднакъв "неориентиран"
-    // ъгъл).
     private static string EdgeOutwardDirection(double x1, double y1, double x2, double y2, double northDeg, double ccwSign)
     {
         double dx = x2 - x1, dy = y2 - y1;
@@ -41,8 +33,6 @@ public static class Program
             sum += vertices[i].x * vertices[i + 1].y - vertices[i + 1].x * vertices[i].y;
         return sum / 2.0;
     }
-
-    // --- граница на етажа (слой OVK), в метри ---
 
     private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer)
     {
@@ -71,9 +61,6 @@ public static class Program
         }
         return totals;
     }
-
-    // --- прозорци/врати: маркери (W Marker/D Marker), вложени във всеки блок,
-    // взети за "външни" само ако допират границата OVK ---
 
     private static double DistancePointToSegment(double px, double py, double x1, double y1, double x2, double y2)
     {
@@ -122,7 +109,7 @@ public static class Program
 
             double px = ins.Position.X / 100.0, py = ins.Position.Y / 100.0;
             string? dir = NearestOvkDirection(px, py, ovkEdges, northDeg, ccwSign, toleranceM);
-            if (dir == null) continue; // не допира OVK -> вътрешен отвор, пропуска се
+            if (dir == null) continue;
 
             openings.Add(new Opening
             {
@@ -180,7 +167,7 @@ public static class Program
 
         int startRow = 57;
         int row = startRow;
-        while (!ws.Cell($"A{row}").IsEmpty())
+        while (!ws.Cell($"B{row}").IsEmpty())
             row++;
 
         foreach (var kvp in openingGroups)
@@ -202,7 +189,7 @@ public static class Program
 
     public static void Main(string[] args)
     {
-        var cfg = new FloorConfig(); // TODO: зареждане от CLI аргументи / UI форма
+        var cfg = new FloorConfig();
 
         var doc = DxfDocument.Load(cfg.DxfPath);
 

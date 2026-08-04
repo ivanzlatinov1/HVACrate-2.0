@@ -12,10 +12,10 @@
 - [x] Opening extraction (W/D Marker) — width/height/direction — via
       nested-marker scan + OVK-touch filter, tested on `floor2.dxf`
 - [x] Grouping openings by (width, height) → count by direction
-- [ ] Writing to the Excel template (ClosedXML) — wall block + opening
-      block. Code exists (`WriteToExcel`) but **not yet run against a
-      real `.xlsx`** — no Excel sample has been tested this session,
-      console output only so far.
+- [x] Writing to the Excel template (ClosedXML) — wall block + opening
+      block. Tested against a real `.xlsx` (converted from the user's
+      real `.xls` template) on a scratch copy — see decisions.md,
+      2026-08-04 (row-finder bug fix).
 - [ ] **Validation:** the original reference values (Floor I,
       N=9.7m/E=12.55m/S=9.7m/W=12.55m, perimeter 44.5m, window #1 =
       1.5m×1.7m) were never actually reproducible by the original

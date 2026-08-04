@@ -121,3 +121,55 @@ strategy after it failed on every real sample tried.
   paths should be removed now that they're unused.
 - Confirm whether `Brizstroy_Misari.dxf`/`floor1.dxf` need to be
   restored to `samples/`.
+
+---
+
+## 2026-08-04 — Session 2 (branch `phase1-excel-writing`)
+
+**Done:**
+
+- Started new branch `phase1-excel-writing` off `main` to close out the
+  remaining Phase 1 item: run `WriteToExcel` against a real `.xlsx`.
+- User pointed to their real working file,
+  `output/Топлотехника V6.0.16.xls` — legacy binary `.xls`, not
+  `.xlsx`. Converted to `.xlsx` via Excel COM automation (PowerShell),
+  since ClosedXML cannot read the old binary format. Confirmed the
+  sheet name (`Изчисления`) matches what `WriteToExcel` expects.
+- Found the real file already holds live project data (not a blank
+  template), so ran the write test against a **scratch copy**, never
+  the original, to avoid destroying real work.
+- Found and fixed two bugs blocking the test (see decisions.md for
+  full detail):
+  1. `HVACrate2.Core.csproj` missing `<OutputType>Exe</OutputType>` —
+     `dotnet run` couldn't execute at all.
+  2. Opening-row finder in `WriteToExcel` checked column `A` for
+     "next free row," but the real template pre-fills `A` with row
+     index numbers regardless of whether the row has real data —
+     would have written into row 93, colliding with the next table's
+     header. Fixed to check column `B` instead.
+- Re-ran the full pipeline (`floor2.dxf` → scratch `.xlsx`) after the
+  fixes: console output matched Session 1's values exactly, and the
+  written cells landed correctly — wall block at row 31 (`C31`..`L31`),
+  opening rows starting at row 57 (widths/heights/direction counts all
+  correct).
+- Reverted `FloorConfig.cs` test-path edits back to their original
+  placeholder defaults before finishing (only `Program.cs` and
+  `HVACrate2.Core.csproj` have real, intentional changes on this
+  branch).
+- Left `output/Топлотехника V6.0.16.xls` and the converted
+  `output/Toplotehnika_V6.0.16.xlsx` untracked (real client data, not
+  committed).
+
+**Open for the next session:**
+
+- Phase 1 is now functionally complete end-to-end (DXF read → OVK
+  extraction → Excel write), pending real-world validation:
+  - Reference-value validation against a real floor with known correct
+    answers is still open — `floor2.dxf` has no independent reference
+    values (see Phase 1 checklist in plan.md).
+  - `output/` is not covered by `.gitignore` — currently relying on
+    the user not staging it; consider adding an explicit rule if this
+    keeps coming up.
+- Everything else carried over from Session 1 (OVK edge cases,
+  `AC_WIDO_ID`, `OvkLayer` configurability, missing sample files) is
+  still open — see above.

@@ -228,3 +228,54 @@ expected for parallel sides), И=12.55m, З=12.50m (both close to a
 15.80×12.5 m rectangle-with-a-notch shape, small difference explained
 by the notch, not a bug). Not yet validated against a non-rectangular
 or rotated (non-zero north angle) floor plan.
+
+---
+
+## 2026-08-04 — `WriteToExcel` tested against a real `.xlsx`; two bugs
+found and fixed (`OutputType`, opening-row finder)
+
+**Decision:** ran the full pipeline (`floor2.dxf` → `WriteToExcel`)
+against a real Excel template for the first time this session, using a
+scratch copy of the user's actual working file
+(`output/Топлотехника V6.0.16.xls`, converted to `.xlsx` via Excel COM
+automation since ClosedXML cannot read the legacy binary `.xls`
+format). Two bugs found and fixed in the process:
+
+1. **`HVACrate2.Core.csproj` was missing `<OutputType>Exe</OutputType>`**
+   — `dotnet run --project src/HVACrate2.Core` failed outright
+   ("Ensure you have a runnable project type... current OutputType is
+   'Library'"). Added it, since `Program.cs`'s `Main` is the console
+   test harness this phase relies on.
+2. **Opening-row finder skipped past the entire empty opening table.**
+   `WriteToExcel` located the first free row for writing opening data
+   via `while (!ws.Cell($"A{row}").IsEmpty()) row++;` starting at row
+   57. In the real template, column `A` in that block is **pre-filled
+   by the template itself** with row index numbers (1, 2, 3, ...) all
+   the way to row 91, even though the actual data columns (`B`
+   width, `C` height, ...) are empty. The old check treated those
+   pre-numbered-but-dataless rows as "already written" and would have
+   started writing real data at row 93 — one row before an unrelated
+   table ("Описание на плътни врати по типове и фасади", starting row
+   94), misplacing/risking clobbering that table's header. Fixed by
+   checking column `B` (an actual data column, never template-prefilled)
+   instead of `A`. Verified after the fix: data for `floor2.dxf` landed
+   correctly starting at row 57, matching the console output byte for
+   byte (widths/heights/direction counts), and the wall block
+   (`C31`..`L31`) wrote correctly for the row-31 (Floor I) slot.
+
+**Important caveat:** this write test was run with `floor2.dxf`'s data
+into the row-7/row-31 slot ("I етаж" / Floor I) purely to validate the
+write mechanics — `floor2.dxf` is **not actually Floor I** of any real
+project and has no known correct row mapping (see the still-open
+"Validation" item in plan.md Phase 1). The write was done on a
+**scratch copy** of the template
+(`C:\Users\XXX\AppData\Local\Temp\claude\...\scratchpad\test_write.xlsx`),
+never on the user's real file in `output/`, specifically because that
+real file already contains live project data in those rows/columns —
+overwriting it with test data would have destroyed real work.
+
+**Not committed:** `output/Топлотехника V6.0.16.xls` and the converted
+`output/Toplotehnika_V6.0.16.xlsx` are real client data, left
+untracked (not covered by `.gitignore` — currently relies on the user
+not `git add`-ing that folder; could add an explicit `.gitignore` rule
+for `output/` in a future session if this recurs).

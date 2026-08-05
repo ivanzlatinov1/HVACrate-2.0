@@ -42,14 +42,18 @@
       reflex (interior/notch) = 8 total OVK vertices, matching the
       user's reference n=6. Written to Excel column `K`, row
       `FloorRow`. See decisions.md, 2026-08-04.
-- [ ] `AC_WIDO_ID` marker attribute — meaning unconfirmed, not used
+- [x] `AC_WIDO_ID` marker attribute — final decision: unused, ignored.
+      See decisions.md, 2026-08-05.
 - [ ] `OVK` boundary approach validated on one sample only
       (`floor2.dxf`). Needs testing against more floor plans: a
       non-rectangular shape, a rotated building (non-zero north angle),
       and a marker sitting equidistant between two `OVK` edges at a
-      corner (tie-break behavior untested)
-- [ ] Decide whether `OvkLayer` name should be user-configurable per
-      project (like `WallLayer` was) rather than hardcoded `"OVK"`
+      corner (tie-break behavior untested). **Deferred until after
+      Phase 3 (UI).**
+- [x] `OvkLayer` name — final decision: hardcoded `"OVK"`/`"ovk"`, not
+      configurable. See decisions.md, 2026-08-05.
+- [x] Columns H (Аок)/I (Аерк)/J (Lерк) — final decision: left blank,
+      no calculation. See decisions.md, 2026-08-05.
 
 ## Phase 3 — WPF UI
 

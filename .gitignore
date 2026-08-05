@@ -481,5 +481,7 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# The output directory containing the Excel file
-output/
+# The output directory containing the Excel file — ignore everything except
+# the blank template, which is tracked so the app has a ready-to-use file
+output/*
+!output/Топлотехника V6.0.16.xlsx

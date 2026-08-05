@@ -340,3 +340,37 @@ decisions.md" was itself wrong/incomplete, now corrected in CLAUDE.md):
 area), `I`=Аерк (m², envelope area), `J`=Lерк (m), `K`=n (count).
 Columns `H`/`I`/`J` are not yet written — no calculation for them
 exists yet.
+
+---
+
+## 2026-08-05 — Session 4 cleanup decisions: H/I/J left blank, `OVK`
+name final, `AC_WIDO_ID` dropped, template tracked in `output/`
+
+**H/I/J columns (Аок, Аерк, Lерк):** **final decision — leave blank.**
+No calculation will be implemented for these. Not a gap to revisit.
+
+**`OvkLayer` name:** **final decision — hardcoded, not configurable.**
+The boundary layer must be named exactly `OVK` or `ovk`. This closes
+the open Phase 2 item questioning whether it should be user-configurable
+per project (like the old `WallLayer` was) — it will not be.
+
+**`AC_WIDO_ID` marker attribute:** **final decision — unused, ignore.**
+This is an ATTRIB tag found on some window marker blocks (not
+consistently present on door markers) whose value never corresponded
+cleanly to any known dimension. User confirmed it is not needed — the
+only layer/attribute set relevant to extraction is the `OVK` boundary
+plus the width/height marker tags already in use. No further
+investigation planned.
+
+**Template Excel file tracked in git:** `output/Топлотехника V6.0.16.xlsx`
+is the user's blank template — empty and ready for the app to write
+into — not live client data as previously assumed (see the Session 2
+entry above, which had classified it as real client data and left it
+untracked; that assumption was wrong for this file). Now committed to
+the repo. `.gitignore` updated: `output/*` stays ignored (for actual
+generated client output), with an explicit exception
+(`!output/Топлотехника V6.0.16.xlsx`) so the template itself is tracked.
+
+**OVK edge-case testing** (non-rectangular plan, rotated/non-zero-north
+building, corner tie-break) — explicitly deferred until after Phase 3
+(UI) is done, not dropped.

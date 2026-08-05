@@ -12,7 +12,7 @@ public partial class StartPage : Page
 
     private void OnStartClick(object sender, RoutedEventArgs e)
     {
-        NavigationService?.Navigate(new WorkPage());
+        NavigationService?.Navigate(new ProjectsPage());
     }
 
     private void OnInstructionsClick(object sender, RoutedEventArgs e)

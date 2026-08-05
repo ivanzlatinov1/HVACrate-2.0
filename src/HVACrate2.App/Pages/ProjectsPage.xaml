@@ -1,0 +1,83 @@
+<Page x:Class="HVACrate2.App.Pages.ProjectsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      mc:Ignorable="d"
+      Title="Projects"
+      Background="{DynamicResource PageBackgroundBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
+                    Padding="12,6" FontSize="13"
+                    HorizontalAlignment="Left" Click="OnBackClick" />
+            <TextBlock Text="Projects" FontSize="26" FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       HorizontalAlignment="Center" />
+        </DockPanel>
+
+        <Border Grid.Row="1" Background="{DynamicResource CardBackgroundBrush}" CornerRadius="10"
+                BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                Padding="16" Margin="0,0,0,20">
+            <DockPanel>
+                <Button Content="Create" Style="{StaticResource SecondaryButtonStyle}"
+                        Padding="14,8" FontSize="14"
+                        DockPanel.Dock="Right" Margin="12,0,0,0"
+                        Click="OnCreateProjectClick" />
+                <TextBox x:Name="NewProjectNameBox" DockPanel.Dock="Left"
+                         Padding="16,6,8,6" FontSize="14"
+                         Tag="New project name..." />
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock x:Name="EmptyStateText" Text="No projects yet — create one above to get started."
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           FontSize="14" HorizontalAlignment="Center" Margin="0,30,0,0"
+                           Visibility="Collapsed" />
+
+                <ItemsControl x:Name="ProjectsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="10" Padding="16,14"
+                                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,0">
+                                            <Run Text="{Binding FloorCount, Mode=OneWay}" />
+                                            <Run Text=" floor(s) · created " />
+                                            <Run Text="{Binding CreatedAt, StringFormat='{}{0:d}', Mode=OneWay}" />
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="Open" Style="{StaticResource NavButtonStyle}"
+                                                Padding="16,8" FontSize="14"
+                                                Tag="{Binding}" Click="OnOpenProjectClick" Margin="0,0,10,0" />
+                                        <Button Content="Delete" Style="{StaticResource SecondaryButtonStyle}"
+                                                Padding="14,8" FontSize="14"
+                                                Tag="{Binding}" Click="OnDeleteProjectClick" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

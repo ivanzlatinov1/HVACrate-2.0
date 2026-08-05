@@ -485,3 +485,12 @@ $RECYCLE.BIN/
 # the blank template, which is tracked so the app has a ready-to-use file
 output/*
 !output/Топлотехника V6.0.16.xlsx
+
+# Instructions-page tutorial videos — large (tens of MB), kept local-only for
+# now; not committed to git or bundled into the published .exe yet. See
+# docs/decisions.md for the storage decision.
+videos/
+
+# Sample DXF drawings (real project data, large binaries) — kept local-only,
+# per user request.
+samples/

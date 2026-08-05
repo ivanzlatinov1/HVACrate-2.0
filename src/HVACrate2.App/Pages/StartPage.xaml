@@ -11,12 +11,14 @@
             <TextBlock Text="HVACrate 2.0"
                        FontSize="48"
                        FontWeight="Bold"
-                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       Foreground="{DynamicResource TitleForegroundBrush}"
                        HorizontalAlignment="Center">
                 <TextBlock.Effect>
                     <DropShadowEffect x:Name="TitleGlow"
                                       Color="{DynamicResource AccentGlowColor}"
-                                      BlurRadius="18" ShadowDepth="0" Opacity="0.85" />
+                                      ShadowDepth="{DynamicResource TitleShadowDepth}"
+                                      Opacity="{DynamicResource TitleShadowOpacity}"
+                                      BlurRadius="18" />
                 </TextBlock.Effect>
                 <TextBlock.Triggers>
                     <EventTrigger RoutedEvent="FrameworkElement.Loaded">

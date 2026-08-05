@@ -1,7 +1,11 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <SolidColorBrush x:Key="AccentBrush" Color="#2F6F4F" />
-    <Color x:Key="AccentGlowColor">#2F6F4F</Color>
+    <Color x:Key="AccentGlowColor">#9AA09C</Color>
+    <SolidColorBrush x:Key="TitleForegroundBrush" Color="#8A8F8C" />
+    <sys:Double x:Key="TitleShadowDepth">3</sys:Double>
+    <sys:Double x:Key="TitleShadowOpacity">0.5</sys:Double>
     <SolidColorBrush x:Key="AccentHoverBrush" Color="#3D8A64" />
     <SolidColorBrush x:Key="SecondaryHoverBrush" Color="#E9F2EC" />
     <LinearGradientBrush x:Key="PageBackgroundBrush" StartPoint="0,0" EndPoint="1,1">

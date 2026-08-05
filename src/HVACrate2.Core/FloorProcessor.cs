@@ -1,0 +1,260 @@
+using ClosedXML.Excel;
+using HVACrate2.Core.Models;
+using netDxf;
+using netDxf.Entities;
+
+namespace HVACrate2.Core;
+
+public static class FloorProcessor
+{
+    private static readonly string[] DirOrder = ["С", "СИ", "И", "ЮИ", "Ю", "ЮЗ", "З", "СЗ"];
+
+    private const int FirstFloorGeometryRow = 7;
+    private const int FirstFloorWallRow = 31;
+    private const int OpeningsTableStartRow = 57;
+
+    private static string BearingToDirection(double mathAngleDeg, double northDeg)
+    {
+        double bearing = ((90.0 - mathAngleDeg) % 360.0 + 360.0) % 360.0;
+        double adjusted = ((bearing - northDeg) % 360.0 + 360.0) % 360.0;
+        int idx = (int)((adjusted + 22.5) % 360.0 / 45.0) % 8;
+        return DirOrder[idx];
+    }
+
+    private static string EdgeOutwardDirection(double x1, double y1, double x2, double y2, double northDeg, double ccwSign)
+    {
+        double dx = x2 - x1, dy = y2 - y1;
+        double nx = ccwSign >= 0 ? dy : -dy;
+        double ny = ccwSign >= 0 ? -dx : dx;
+        double angle = Math.Atan2(ny, nx) * 180.0 / Math.PI;
+        return BearingToDirection(angle, northDeg);
+    }
+
+    private static double SignedArea(List<(double x, double y)> vertices)
+    {
+        double sum = 0.0;
+        for (int i = 0; i < vertices.Count - 1; i++)
+            sum += vertices[i].x * vertices[i + 1].y - vertices[i + 1].x * vertices[i].y;
+        return sum / 2.0;
+    }
+
+    private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer)
+    {
+        var poly = doc.Entities.Polylines2D.FirstOrDefault(p => p.Layer.Name.Contains(ovkLayer))
+            ?? throw new InvalidOperationException($"Не е намерена гранична полилиния на слой '{ovkLayer}'.");
+        return poly.Vertexes.Select(v => (v.Position.X / 100.0, v.Position.Y / 100.0)).ToList();
+    }
+
+    private static List<(double x1, double y1, double x2, double y2)> OvkEdges(List<(double x, double y)> vertices)
+    {
+        var edges = new List<(double, double, double, double)>();
+        for (int i = 0; i < vertices.Count - 1; i++)
+            edges.Add((vertices[i].x, vertices[i].y, vertices[i + 1].x, vertices[i + 1].y));
+        return edges;
+    }
+
+    private static int CountConvexCorners(List<(double x, double y)> vertices, double ccwSign)
+    {
+        int n = vertices.Count - 1;
+        int convex = 0;
+        for (int i = 0; i < n; i++)
+        {
+            var (x, y) = vertices[(i - 1 + n) % n];
+            var cur = vertices[i];
+            var next = vertices[i + 1];
+            double ex1 = cur.x - x, ey1 = cur.y - y;
+            double ex2 = next.x - cur.x, ey2 = next.y - cur.y;
+            double cross = ex1 * ey2 - ey1 * ex2;
+            if (Math.Sign(cross) == ccwSign || cross == 0)
+                convex++;
+        }
+        return convex;
+    }
+
+    private static Dictionary<string, double> WallLengthByDirection(
+        List<(double x1, double y1, double x2, double y2)> ovkEdges, double northDeg, double ccwSign)
+    {
+        var totals = DirOrder.ToDictionary(d => d, d => 0.0);
+        foreach (var (x1, y1, x2, y2) in ovkEdges)
+        {
+            double length = Math.Sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+            if (length < 1e-6) continue;
+            totals[EdgeOutwardDirection(x1, y1, x2, y2, northDeg, ccwSign)] += length;
+        }
+        return totals;
+    }
+
+    private static double DistancePointToSegment(double px, double py, double x1, double y1, double x2, double y2)
+    {
+        double dx = x2 - x1, dy = y2 - y1;
+        double lenSq = dx * dx + dy * dy;
+        if (lenSq < 1e-9) return Math.Sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
+        double t = Math.Clamp(((px - x1) * dx + (py - y1) * dy) / lenSq, 0.0, 1.0);
+        double cx = x1 + t * dx, cy = y1 + t * dy;
+        return Math.Sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
+    }
+
+    private static string? NearestOvkDirection(
+        double px, double py, List<(double x1, double y1, double x2, double y2)> ovkEdges,
+        double northDeg, double ccwSign, double toleranceM)
+    {
+        double bestDist = double.MaxValue;
+        string? bestDir = null;
+        foreach (var (x1, y1, x2, y2) in ovkEdges)
+        {
+            double d = DistancePointToSegment(px, py, x1, y1, x2, y2);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                bestDir = EdgeOutwardDirection(x1, y1, x2, y2, northDeg, ccwSign);
+            }
+        }
+        return bestDist <= toleranceM ? bestDir : null;
+    }
+
+    private static List<Opening> ExtractOpeningsTouchingOvk(
+        DxfDocument doc, List<(double x1, double y1, double x2, double y2)> ovkEdges,
+        double northDeg, double ccwSign, double toleranceM = 0.5)
+    {
+        var markers = doc.Entities.Inserts
+            .Concat(doc.Blocks.SelectMany(b => b.Entities.OfType<Insert>()))
+            .Where(i => i.Block.Name.StartsWith("W Marker") || i.Block.Name.StartsWith("D Marker"));
+
+        var openings = new List<Opening>();
+        foreach (var ins in markers)
+        {
+            var attrs = ins.Attributes.ToDictionary(a => a.Tag, a => a.Value?.ToString() ?? "");
+            if (!attrs.TryGetValue("AC_MarkerText_2", out var wStr)) continue;
+            if (!attrs.TryGetValue("AC_MarkerText_3", out var hStr)) continue;
+            if (!double.TryParse(wStr.Replace(",", "."), out double widthCm)) continue;
+            if (!double.TryParse(hStr.Replace(",", "."), out double heightCm)) continue;
+
+            double px = ins.Position.X / 100.0, py = ins.Position.Y / 100.0;
+            string? dir = NearestOvkDirection(px, py, ovkEdges, northDeg, ccwSign, toleranceM);
+            if (dir == null) continue;
+
+            openings.Add(new Opening
+            {
+                WidthM = Math.Round(widthCm / 100.0, 2),
+                HeightM = Math.Round(heightCm / 100.0, 2),
+                Direction = dir,
+            });
+        }
+        return openings;
+    }
+
+    private static Dictionary<(double w, double h), Dictionary<string, int>> GroupOpenings(List<Opening> openings)
+    {
+        var groups = new Dictionary<(double, double), Dictionary<string, int>>();
+        foreach (var o in openings)
+        {
+            var key = (o.WidthM, o.HeightM);
+            if (!groups.ContainsKey(key))
+                groups[key] = DirOrder.ToDictionary(d => d, d => 0);
+            groups[key][o.Direction]++;
+        }
+        return groups;
+    }
+
+    private static readonly Dictionary<string, string> DirCols = new()
+    {
+        ["С"] = "D",
+        ["СИ"] = "E",
+        ["И"] = "F",
+        ["ЮИ"] = "G",
+        ["Ю"] = "H",
+        ["ЮЗ"] = "I",
+        ["З"] = "J",
+        ["СЗ"] = "K",
+    };
+
+    /// <summary>Reads one floor's DXF and computes area/volume/corners/wall lengths/openings from its OVK boundary.</summary>
+    public static FloorResult ProcessFloor(FloorInput input, string ovkLayer = "OVK")
+    {
+        var doc = DxfDocument.Load(input.DxfPath);
+
+        var ovkVertices = OvkVertices(doc, ovkLayer);
+        var ovkEdges = OvkEdges(ovkVertices);
+        double signedArea = SignedArea(ovkVertices);
+        double ccwSign = Math.Sign(signedArea);
+
+        var wallTotals = WallLengthByDirection(ovkEdges, input.NorthDeg, ccwSign);
+        double areaM2 = Math.Abs(signedArea);
+        double volumeM3 = areaM2 * input.HeightM;
+        int convexCorners = CountConvexCorners(ovkVertices, ccwSign);
+
+        var openings = ExtractOpeningsTouchingOvk(doc, ovkEdges, input.NorthDeg, ccwSign);
+        var openingGroups = GroupOpenings(openings);
+
+        return new FloorResult
+        {
+            AreaM2 = areaM2,
+            VolumeM3 = volumeM3,
+            ConvexCorners = convexCorners,
+            WallTotals = wallTotals,
+            OpeningGroups = openingGroups,
+        };
+    }
+
+    /// <summary>Writes one floor's computed result into the workbook at the row slot for the given 0-based floor index (0 = Floor I).</summary>
+    public static void WriteFloorToExcel(XLWorkbook wb, FloorInput input, FloorResult result, int floorIndex)
+    {
+        var ws = wb.Worksheet("Изчисления");
+
+        double totalPerimeter = result.WallTotals.Values.Sum(v => Math.Round(v, 2));
+
+        int fr = FirstFloorGeometryRow + floorIndex;
+        ws.Cell($"C{fr}").Value = Math.Round(result.AreaM2, 2);
+        ws.Cell($"E{fr}").Value = input.HeightM;
+        ws.Cell($"F{fr}").Value = Math.Round(result.VolumeM3, 2);
+        ws.Cell($"G{fr}").Value = Math.Round(totalPerimeter, 2);
+        ws.Cell($"K{fr}").Value = result.ConvexCorners;
+
+        int r = FirstFloorWallRow + floorIndex;
+        ws.Cell($"C{r}").Value = input.HeightM;
+        foreach (var (dir, col) in DirCols)
+        {
+            double val = Math.Round(result.WallTotals.GetValueOrDefault(dir, 0.0), 2);
+            if (val > 0)
+                ws.Cell($"{col}{r}").Value = val;
+        }
+        ws.Cell($"L{r}").Value = Math.Round(totalPerimeter, 2);
+
+        int row = OpeningsTableStartRow;
+        while (!ws.Cell($"B{row}").IsEmpty())
+            row++;
+
+        foreach (var kvp in result.OpeningGroups)
+        {
+            var (widthM, heightM) = kvp.Key;
+            var byDir = kvp.Value;
+
+            ws.Cell($"A{row}").Value = row - OpeningsTableStartRow + 1;
+            ws.Cell($"B{row}").Value = widthM;
+            ws.Cell($"C{row}").Value = heightM;
+            foreach (var (dir, col) in DirCols)
+            {
+                if (byDir[dir] > 0)
+                    ws.Cell($"{col}{row}").Value = byDir[dir];
+            }
+            row++;
+        }
+    }
+
+    /// <summary>
+    /// Full pipeline for a building: processes each floor's DXF (in order, floor 0 = Floor I) and
+    /// writes all results into a copy of the template workbook saved at <paramref name="outputExcelPath"/>.
+    /// The template file itself is never modified.
+    /// </summary>
+    public static void ProcessAndWriteFloors(
+        IReadOnlyList<FloorInput> floors, string templateExcelPath, string outputExcelPath, string ovkLayer = "OVK")
+    {
+        using var wb = new XLWorkbook(templateExcelPath);
+        for (int i = 0; i < floors.Count; i++)
+        {
+            var result = ProcessFloor(floors[i], ovkLayer);
+            WriteFloorToExcel(wb, floors[i], result, i);
+        }
+        wb.SaveAs(outputExcelPath);
+    }
+}

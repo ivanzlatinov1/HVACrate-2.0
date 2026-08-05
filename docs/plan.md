@@ -88,9 +88,12 @@
 - [ ] Results table before writing — **not built**; current flow goes
       straight from "Extract & Fill" to a success message + download,
       no interim review step
-- [ ] Instructions page — stub only (placeholder text). Real content
-      (user's screen-recorded video + written step-by-step) blocked on
-      the user recording the video once the Work page is stable.
+- [x] Instructions page — two parts, each with a video + numbered
+      written steps: (1) exporting the `.dxf` from AutoCAD (`OVK`
+      layer, `WBLOCK`), (2) using HVACrate 2.0 to extract the Excel
+      result. Videos resolve local-first (`videos/`, gitignored) and
+      fall back to hosted GitHub Releases URLs otherwise — see
+      decisions.md, 2026-08-05 (Instructions page session).
 
 ## Phase 4 — Packaging and distribution
 

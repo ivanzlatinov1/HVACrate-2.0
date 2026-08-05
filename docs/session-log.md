@@ -306,3 +306,45 @@ a blank `MainWindow.xaml` and no pages existed yet.
   building, corner tie-break) — still deferred from Session 3/4.
 - Everything else carried over (see decisions.md, 2026-08-05 Phase 3
   entry) is still open.
+
+---
+
+## 2026-08-05 — Session 6 (branch `phase3-instructions-page`, merged
+to `main`)
+
+**Done:**
+
+- Built out the Instructions page (was a stub): two parts per the
+  user's spec, each with a video (new `Controls/VideoPlayerControl` —
+  `MediaElement` wrapper with Play/Pause/Restart) followed by the
+  numbered written steps, verbatim — (1) exporting the `.dxf` from
+  AutoCAD via the `OVK` layer + `WBLOCK`, (2) using HVACrate 2.0 to
+  extract the Excel result.
+- Discussed video hosting options with the user (bundled in repo/exe,
+  YouTube, GitHub Releases) and landed on **GitHub Releases** — same
+  place the app's `.exe` is already published, and `MediaElement` can
+  stream the URL directly with no new dependency. User uploaded both
+  videos to the repo's `Pre-Release` release.
+  `VideoPlayerControl`/`InstructionsPage` resolve local-first
+  (`videos/` next to the repo root) and fall back to the hosted URL
+  otherwise; added a `MediaFailed` handler for a friendly message
+  instead of a blank player on a bad connection. Verified both the
+  local and remote paths against the real built `.exe` (temporarily
+  hid the local `videos/` folder to force and confirm the remote
+  streaming/playback path).
+- Per user request, stopped tracking `samples/` in git (kept on disk,
+  local-only) — same treatment as `videos/`. `samples/floor1.dxf`
+  removed from the index via `git rm --cached`; `.gitignore` updated
+  for both directories.
+- Branch merged to `main` and pushed to `origin`.
+
+**Open for the next session:**
+
+- 2D preview of recognized walls/windows, and a results-review table
+  before the final Excel write — neither built yet.
+- OVK edge-case testing (non-rectangular plan, rotated/non-zero-north
+  building, corner tie-break) — still deferred from Session 3/4.
+- Phase 4 (packaging/distribution) not started — single-file publish,
+  clean-machine test, GitHub Releases upload, static-site link.
+- Everything else carried over (see decisions.md, 2026-08-05
+  Instructions page entry) is still open.

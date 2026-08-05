@@ -463,3 +463,53 @@ diagnosis.
 - OVK edge-case testing (non-rectangular plan, rotated/non-zero-north
   building, corner tie-break) — still deferred, per the Session 4
   decision above.
+
+---
+
+## 2026-08-05 — Instructions page session: content, video hosting,
+`samples/` untracked from git
+
+**Instructions page built out** (closing the stub from the previous
+session): two parts, each pairing a video with numbered written steps,
+content and step text specified verbatim by the user —
+
+1. Exporting the `.dxf` from AutoCAD: open the project, go to the
+   floor, create the `OVK` layer (mandatory), enclose the floor with
+   it, select the floor, `WBLOCK`, pick a start point on an OVK edge,
+   choose a destination, save as `.dxf` (mandatory).
+2. Using HVACrate 2.0: open the app, create a project (or add a floor
+   to an existing one), import the `.dxf`, set height/direction, then
+   download the filled Excel once all floors are in.
+
+Built `Controls/VideoPlayerControl` (a `MediaElement` wrapper with
+Play/Pause/Restart) rather than using `MediaElement` directly inline,
+since the page needs two independent players with identical behavior.
+
+**Video hosting: local-first, GitHub Releases URL fallback.** The two
+tutorial videos (~65MB + ~11MB) were evaluated for where to live — see
+the options discussed with the user: bundled into the repo/exe,
+YouTube (would need a `WebView2` embed since `MediaElement` can't play
+YouTube URLs directly), or GitHub Releases (same place the app's
+`.exe` is already published). **Decision: GitHub Releases**, since
+`MediaElement` can stream an https URL with no architecture change,
+it's free, versioned alongside the app, and requires no new
+dependency. The user uploaded both videos to the repo's `Pre-Release`
+release. `VideoPlayerControl` resolves local-first (`videos/` next to
+the repo root — fast, works offline, dev convenience) and falls back
+to the hosted URL if the local file isn't present; a `MediaFailed`
+handler shows a friendly message instead of a blank player if the
+remote stream can't be reached. Verified both paths against the real
+built `.exe` — local playback, and remote streaming/playback with the
+local `videos/` folder temporarily hidden to force the fallback.
+
+**`videos/` and `samples/` both kept local-only, not tracked in git.**
+`videos/` was never tracked (added straight to `.gitignore` — large
+binaries, now redundant with the app anyway since it streams from
+GitHub Releases). `samples/` (real DXF project files, also large
+binaries) was explicitly **untracked by user request** this session —
+`samples/floor1.dxf` removed from the git index via `git rm --cached`
+(kept on disk) and `samples/` added to `.gitignore`. Note this reverses
+the earlier 2026-08-04 decision to track `samples/floor1.dxf` for
+Phase 1 validation reproducibility — that validation already happened
+and is recorded in this file, so the file no longer needs to live in
+git for that purpose.

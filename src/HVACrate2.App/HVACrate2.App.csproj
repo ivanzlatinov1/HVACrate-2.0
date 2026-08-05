@@ -4,6 +4,11 @@
     <ProjectReference Include="..\HVACrate2.Core\HVACrate2.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Blank Excel template, bundled with the app so it works regardless of install location. -->
+    <None Include="..\..\output\Топлотехника V6.0.16.xlsx" Link="Assets\Template.xlsx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

@@ -1,0 +1,52 @@
+<Page x:Class="HVACrate2.App.Pages.StartPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      mc:Ignorable="d"
+      Title="HVACrate 2.0"
+      Background="{DynamicResource PageBackgroundBrush}">
+    <Grid>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="420">
+            <TextBlock Text="HVACrate 2.0"
+                       FontSize="48"
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TitleForegroundBrush}"
+                       HorizontalAlignment="Center">
+                <TextBlock.Effect>
+                    <DropShadowEffect x:Name="TitleGlow"
+                                      Color="{DynamicResource AccentGlowColor}"
+                                      ShadowDepth="{DynamicResource TitleShadowDepth}"
+                                      Opacity="{DynamicResource TitleShadowOpacity}"
+                                      BlurRadius="18" />
+                </TextBlock.Effect>
+                <TextBlock.Triggers>
+                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                        <BeginStoryboard>
+                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                <DoubleAnimation Storyboard.TargetName="TitleGlow"
+                                                 Storyboard.TargetProperty="BlurRadius"
+                                                 From="14" To="30" Duration="0:0:1.6" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </TextBlock.Triggers>
+            </TextBlock>
+            <TextBlock Text="Automated thermal-performance data extraction from DXF drawings"
+                       FontSize="14"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Margin="0,10,0,50" />
+
+            <Button Content="Start"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="OnStartClick"
+                    Margin="0,0,0,16" />
+
+            <Button Content="Instructions"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Click="OnInstructionsClick" />
+        </StackPanel>
+    </Grid>
+</Page>

@@ -7,7 +7,7 @@
       xmlns:vm="clr-namespace:HVACrate2.App.ViewModels"
       mc:Ignorable="d"
       Title="Work"
-      Background="{StaticResource PageBackgroundBrush}">
+      Background="{DynamicResource PageBackgroundBrush}">
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -20,7 +20,7 @@
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
             <TextBlock Text="Floors" FontSize="26" FontWeight="Bold"
-                       Foreground="{StaticResource TextPrimaryBrush}"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
         </DockPanel>
 
@@ -29,8 +29,8 @@
                 <ItemsControl x:Name="FloorsList">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="White" CornerRadius="10" Padding="18"
-                                    BorderBrush="#DDDEDD" BorderThickness="1" Margin="0,0,0,14">
+                            <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="10" Padding="18"
+                                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -45,7 +45,7 @@
                                     <StackPanel Grid.Column="1">
                                         <TextBlock Text="{Binding FloorNumber, StringFormat='Floor {0}'}"
                                                    FontSize="18" FontWeight="SemiBold"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
                                                    Margin="0,0,0,10" />
 
                                         <DockPanel Margin="0,0,0,10">
@@ -54,7 +54,7 @@
                                                     DockPanel.Dock="Left"
                                                     Tag="{Binding}" Click="OnChooseDxfClick" />
                                             <TextBlock Text="{Binding DxfFileName}" VerticalAlignment="Center"
-                                                       Margin="12,0,0,0" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                       Margin="12,0,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
                                         </DockPanel>
 
                                         <Grid Margin="0,0,0,10">
@@ -63,7 +63,7 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="Height (m)" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
                                             <TextBox Grid.Column="1" Width="120" HorizontalAlignment="Left"
                                                      Padding="6,4" Text="{Binding HeightText, UpdateSourceTrigger=PropertyChanged}" />
                                         </Grid>
@@ -74,7 +74,7 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <TextBlock Text="Up direction" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
                                             <ComboBox Grid.Column="1" Width="160" HorizontalAlignment="Left"
                                                       ItemsSource="{Binding Source={x:Static vm:CompassDirectionOption.All}}"
                                                       SelectedItem="{Binding SelectedDirection}" />
@@ -97,7 +97,7 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Margin="0,16,0,0">
-            <TextBlock x:Name="StatusText" Foreground="#B3261E" Margin="0,0,0,10"
+            <TextBlock x:Name="StatusText" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,10"
                        TextWrapping="Wrap" Visibility="Collapsed" />
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="ExtractButton" Content="Extract &amp; Fill Excel" Style="{StaticResource NavButtonStyle}"

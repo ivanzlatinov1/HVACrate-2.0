@@ -5,7 +5,7 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       mc:Ignorable="d"
       Title="Instructions"
-      Background="{StaticResource PageBackgroundBrush}">
+      Background="{DynamicResource PageBackgroundBrush}">
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -17,12 +17,12 @@
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
             <TextBlock Text="Instructions" FontSize="26" FontWeight="Bold"
-                       Foreground="{StaticResource TextPrimaryBrush}"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
         </DockPanel>
 
         <TextBlock Grid.Row="1" Text="Instructions page — video + written steps coming next."
-                   FontSize="16" Foreground="{StaticResource TextSecondaryBrush}"
+                   FontSize="16" Foreground="{DynamicResource TextSecondaryBrush}"
                    HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Grid>
 </Page>

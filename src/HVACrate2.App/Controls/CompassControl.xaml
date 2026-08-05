@@ -5,20 +5,44 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
              Width="110" Height="110">
-    <Border CornerRadius="55" Background="White" BorderBrush="{StaticResource AccentBrush}" BorderThickness="2">
-        <Grid x:Name="RotatingGrid" RenderTransformOrigin="0.5,0.5">
-            <Grid.RenderTransform>
-                <RotateTransform x:Name="Rotation" Angle="0" />
-            </Grid.RenderTransform>
+    <Border CornerRadius="55" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2">
+        <Grid Width="106" Height="106">
+            <!-- Fixed dial: tick marks and N/E/S/W labels never rotate -->
+            <Canvas Width="106" Height="106">
+                <Ellipse Canvas.Left="10" Canvas.Top="10" Width="86" Height="86"
+                          Stroke="{DynamicResource CardBorderBrush}" StrokeThickness="1" />
 
-            <!-- Vector fallback rose, shown until Assets/compass.png is available -->
-            <Canvas x:Name="FallbackRose" Width="106" Height="106">
-                <Polygon Points="53,8 63,53 53,45 43,53" Fill="{StaticResource AccentBrush}" />
-                <Polygon Points="53,98 63,53 53,61 43,53" Fill="#C9C9C9" />
-                <TextBlock Text="N" Canvas.Left="47" Canvas.Top="10" FontWeight="Bold" FontSize="11" Foreground="{StaticResource TextPrimaryBrush}" />
+                <TextBlock Text="N" Canvas.Left="47.5" Canvas.Top="6" FontWeight="Bold" FontSize="12"
+                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="E" Canvas.Left="90" Canvas.Top="46" FontWeight="Bold" FontSize="12"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Text="S" Canvas.Left="48" Canvas.Top="86" FontWeight="Bold" FontSize="12"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Text="W" Canvas.Left="6" Canvas.Top="46" FontWeight="Bold" FontSize="12"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+
+                <TextBlock Text="NE" Canvas.Left="77" Canvas.Top="16" FontSize="9" Opacity="0.75"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Text="SE" Canvas.Left="77" Canvas.Top="78" FontSize="9" Opacity="0.75"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Text="SW" Canvas.Left="12" Canvas.Top="78" FontSize="9" Opacity="0.75"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Text="NW" Canvas.Left="12" Canvas.Top="16" FontSize="9" Opacity="0.75"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
             </Canvas>
 
-            <Image x:Name="CompassImage" Stretch="Uniform" Visibility="Collapsed" />
+            <!-- Rotating needle: points toward the selected direction, animated on change -->
+            <Grid RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <RotateTransform x:Name="Rotation" Angle="0" />
+                </Grid.RenderTransform>
+
+                <Path Data="M53,25 L58,53 L53,48 L48,53 Z" Fill="{DynamicResource AccentBrush}" />
+                <Path Data="M53,81 L58,53 L53,58 L48,53 Z" Fill="{DynamicResource TextSecondaryBrush}" />
+            </Grid>
+
+            <Ellipse Width="8" Height="8" Fill="{DynamicResource TextPrimaryBrush}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Grid>
     </Border>
 </UserControl>

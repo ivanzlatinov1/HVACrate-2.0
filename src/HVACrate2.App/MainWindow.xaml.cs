@@ -10,4 +10,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         RootFrame.Navigate(new StartPage());
     }
+
+    private void OnThemeToggleClick(object sender, RoutedEventArgs e)
+    {
+        ThemeManager.SetTheme(ThemeToggle.IsChecked == true);
+    }
 }

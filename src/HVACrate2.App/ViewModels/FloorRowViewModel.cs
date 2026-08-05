@@ -49,6 +49,6 @@ public sealed class FloorRowViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Rotation angle (degrees) so the selected direction's label sits at the top of the compass image.</summary>
-    public double CompassAngle => -_selectedDirection.Degrees;
+    /// <summary>Needle rotation angle (degrees clockwise from N) matching the selected direction.</summary>
+    public double CompassAngle => _selectedDirection.Degrees;
 }

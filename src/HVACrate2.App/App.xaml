@@ -83,8 +83,20 @@
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="6">
-                                <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+                                <Grid>
+                                    <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               Margin="{TemplateBinding Padding}"
+                                               VerticalAlignment="Center" IsHitTestVisible="False"
+                                               Visibility="Collapsed" />
+                                    <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />
+                                </Grid>
                             </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="Text" Value="">
+                                    <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>

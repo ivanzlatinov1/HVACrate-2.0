@@ -12,12 +12,15 @@ namespace HVACrate2.App.Pages;
 
 public partial class WorkPage : Page
 {
+    private readonly ProjectRecord _project;
     private readonly ObservableCollection<FloorRowViewModel> _floors = new();
     private string? _lastOutputPath;
 
-    public WorkPage()
+    public WorkPage(ProjectRecord project)
     {
         InitializeComponent();
+        _project = project;
+        TitleText.Text = $"Floors — {project.Name}";
         FloorsList.ItemsSource = _floors;
         AddFloor();
     }
@@ -25,17 +28,19 @@ public partial class WorkPage : Page
     private void AddFloor()
     {
         _floors.Add(new FloorRowViewModel { FloorNumber = _floors.Count + 1 });
+        _project.FloorCount = _floors.Count;
     }
 
     private void Renumber()
     {
         for (int i = 0; i < _floors.Count; i++)
             _floors[i].FloorNumber = i + 1;
+        _project.FloorCount = _floors.Count;
     }
 
     private void OnBackClick(object sender, RoutedEventArgs e)
     {
-        NavigationService?.Navigate(new StartPage());
+        NavigationService?.Navigate(new ProjectsPage());
     }
 
     private void OnAddFloorClick(object sender, RoutedEventArgs e)

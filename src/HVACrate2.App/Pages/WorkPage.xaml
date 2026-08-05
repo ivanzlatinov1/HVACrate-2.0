@@ -19,7 +19,7 @@
             <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
-            <TextBlock Text="Floors" FontSize="26" FontWeight="Bold"
+            <TextBlock x:Name="TitleText" Text="Floors" FontSize="26" FontWeight="Bold"
                        Foreground="{DynamicResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
         </DockPanel>

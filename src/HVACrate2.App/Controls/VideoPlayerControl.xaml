@@ -8,7 +8,10 @@
         <Grid>
             <MediaElement x:Name="Player" Stretch="Uniform"
                           LoadedBehavior="Manual" UnloadedBehavior="Manual"
-                          MediaEnded="OnMediaEnded" Visibility="Collapsed" />
+                          MediaEnded="OnMediaEnded" MediaFailed="OnMediaFailed" Visibility="Collapsed" />
+
+            <TextBlock x:Name="LoadingText" Text="Loading video..." Foreground="#AAAAAA" FontSize="14"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
 
             <TextBlock x:Name="MissingText" Foreground="#AAAAAA" FontSize="14"
                        TextWrapping="Wrap" TextAlignment="Center"

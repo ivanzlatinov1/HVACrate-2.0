@@ -12,23 +12,25 @@ public partial class VideoPlayerControl : UserControl
         InitializeComponent();
     }
 
-    /// <summary>Sets the video source. Pass null (or a missing path) to show a "not found" placeholder instead.</summary>
-    public void SetSource(string? path)
+    /// <summary>Sets the video source (local file or http/https URL). Pass null to show a "not found" placeholder.</summary>
+    public void SetSource(Uri? source)
     {
-        if (path is null || !System.IO.File.Exists(path))
+        if (source is null)
         {
             Player.Visibility = Visibility.Collapsed;
             Controls.Visibility = Visibility.Collapsed;
-            MissingText.Text = "Video not found. This walkthrough video ships with the development checkout " +
-                                "(the videos/ folder) and isn't bundled with every build yet.";
+            LoadingText.Visibility = Visibility.Collapsed;
+            MissingText.Text = "Video not available.";
             MissingText.Visibility = Visibility.Visible;
             return;
         }
 
         MissingText.Visibility = Visibility.Collapsed;
-        Player.Visibility = Visibility.Visible;
+        bool isRemote = source.Scheme is "http" or "https";
+        Player.Visibility = isRemote ? Visibility.Collapsed : Visibility.Visible;
+        LoadingText.Visibility = isRemote ? Visibility.Visible : Visibility.Collapsed;
         Controls.Visibility = Visibility.Visible;
-        Player.Source = new Uri(path, UriKind.Absolute);
+        Player.Source = source;
         Player.Position = TimeSpan.Zero;
         _isPlaying = false;
         PlayPauseButton.Content = "Play";
@@ -44,6 +46,8 @@ public partial class VideoPlayerControl : UserControl
         else
         {
             Player.Play();
+            Player.Visibility = Visibility.Visible;
+            LoadingText.Visibility = Visibility.Collapsed;
             PlayPauseButton.Content = "Pause";
         }
         _isPlaying = !_isPlaying;
@@ -53,6 +57,8 @@ public partial class VideoPlayerControl : UserControl
     {
         Player.Position = TimeSpan.Zero;
         Player.Play();
+        Player.Visibility = Visibility.Visible;
+        LoadingText.Visibility = Visibility.Collapsed;
         PlayPauseButton.Content = "Pause";
         _isPlaying = true;
     }
@@ -63,5 +69,14 @@ public partial class VideoPlayerControl : UserControl
         Player.Stop();
         PlayPauseButton.Content = "Play";
         _isPlaying = false;
+    }
+
+    private void OnMediaFailed(object sender, ExceptionRoutedEventArgs e)
+    {
+        Player.Visibility = Visibility.Collapsed;
+        LoadingText.Visibility = Visibility.Collapsed;
+        Controls.Visibility = Visibility.Collapsed;
+        MissingText.Text = "Couldn't load the video — check your internet connection and try again.";
+        MissingText.Visibility = Visibility.Visible;
     }
 }

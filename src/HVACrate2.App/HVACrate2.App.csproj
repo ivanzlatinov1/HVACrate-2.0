@@ -4,6 +4,13 @@
     <ProjectReference Include="..\HVACrate2.Core\HVACrate2.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Drop a compass.png here to replace the vector fallback compass; picked up automatically once present. -->
+    <Resource Include="Assets\compass.png" Condition="Exists('Assets\compass.png')" />
+    <!-- Blank Excel template, bundled with the app so it works regardless of install location. -->
+    <None Include="..\..\output\Топлотехника V6.0.16.xlsx" Link="Assets\Template.xlsx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

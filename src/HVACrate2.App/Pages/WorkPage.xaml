@@ -3,6 +3,8 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:controls="clr-namespace:HVACrate2.App.Controls"
+      xmlns:vm="clr-namespace:HVACrate2.App.ViewModels"
       mc:Ignorable="d"
       Title="Work"
       Background="{StaticResource PageBackgroundBrush}">
@@ -10,9 +12,10 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0" Margin="0,0,0,20">
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
             <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
@@ -21,8 +24,87 @@
                        HorizontalAlignment="Center" />
         </DockPanel>
 
-        <TextBlock Grid.Row="1" Text="Work page — coming next."
-                   FontSize="16" Foreground="{StaticResource TextSecondaryBrush}"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <ItemsControl x:Name="FloorsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="White" CornerRadius="10" Padding="18"
+                                    BorderBrush="#DDDEDD" BorderThickness="1" Margin="0,0,0,14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <controls:CompassControl Grid.Column="0"
+                                        AngleDegrees="{Binding CompassAngle}"
+                                        VerticalAlignment="Top" Margin="0,0,20,0" />
+
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding FloorNumber, StringFormat='Floor {0}'}"
+                                                   FontSize="18" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   Margin="0,0,0,10" />
+
+                                        <DockPanel Margin="0,0,0,10">
+                                            <Button Content="Choose DXF..." Style="{StaticResource SecondaryButtonStyle}"
+                                                    Padding="12,6" FontSize="13"
+                                                    DockPanel.Dock="Left"
+                                                    Tag="{Binding}" Click="OnChooseDxfClick" />
+                                            <TextBlock Text="{Binding DxfFileName}" VerticalAlignment="Center"
+                                                       Margin="12,0,0,0" Foreground="{StaticResource TextSecondaryBrush}" />
+                                        </DockPanel>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="150" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Height (m)" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <TextBox Grid.Column="1" Width="120" HorizontalAlignment="Left"
+                                                     Padding="6,4" Text="{Binding HeightText, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="150" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Up direction" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <ComboBox Grid.Column="1" Width="160" HorizontalAlignment="Left"
+                                                      ItemsSource="{Binding Source={x:Static vm:CompassDirectionOption.All}}"
+                                                      SelectedItem="{Binding SelectedDirection}" />
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="2" Content="Remove" Style="{StaticResource SecondaryButtonStyle}"
+                                            Padding="10,6" FontSize="12" VerticalAlignment="Top"
+                                            Tag="{Binding}" Click="OnRemoveFloorClick" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button Content="+ Add floor" Style="{StaticResource SecondaryButtonStyle}"
+                        HorizontalAlignment="Left" Padding="14,8"
+                        Click="OnAddFloorClick" Margin="0,0,0,20" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+            <TextBlock x:Name="StatusText" Foreground="#B3261E" Margin="0,0,0,10"
+                       TextWrapping="Wrap" Visibility="Collapsed" />
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="ExtractButton" Content="Extract &amp; Fill Excel" Style="{StaticResource NavButtonStyle}"
+                        Padding="20,12" Click="OnExtractClick" Margin="0,0,12,0" />
+                <Button x:Name="DownloadButton" Content="Download filled Excel" Style="{StaticResource NavButtonStyle}"
+                        Padding="20,12" Click="OnDownloadClick" Visibility="Collapsed" />
+            </StackPanel>
+        </StackPanel>
     </Grid>
 </Page>

@@ -374,3 +374,92 @@ generated client output), with an explicit exception
 **OVK edge-case testing** (non-rectangular plan, rotated/non-zero-north
 building, corner tie-break) — explicitly deferred until after Phase 3
 (UI) is done, not dropped.
+
+---
+
+## 2026-08-05 — Phase 3 UI session: `FloorProcessor` extracted, Projects
+menu (in-memory), theme system, custom compass, crash fix
+
+**`HVACrate2.Core.Program.Main` refactored into a reusable API.** The
+extraction/write logic that used to live only in the console harness's
+`Main` method now lives in public `FloorProcessor.ProcessFloor` /
+`WriteFloorToExcel` / `ProcessAndWriteFloors` (`src/HVACrate2.Core/FloorProcessor.cs`),
+taking a `FloorInput` and returning a `FloorResult`. `Program.Main` is
+now a thin console test harness on top of it, writing to a scratch file
+instead of overwriting the tracked template. Necessary because the WPF
+app needs to call this logic for an arbitrary number of floors, not just
+run a single hardcoded `ProjectConfig`. Re-verified against
+`samples/floor1.dxf` after the refactor — output unchanged from the
+previously validated values.
+
+**Navigation shape:** Start → Projects → Floors (Work), plus Start →
+Instructions. Not the original two-page shape implied by CLAUDE.md's
+"work page" / "instructions page" wording — a Projects list was added
+between Start and the Floors page per explicit user request mid-session.
+
+**Projects are in-memory only (`ProjectStore`), not persisted.**
+**Decision, explicit user instruction:** "in memory database or
+whatever you choose to store the data." No database, no file-backed
+persistence — projects disappear when the app closes. Revisit only if
+the user asks for persistence later; not an oversight.
+
+**Excel template is bundled with the app, not picked per run.**
+`output/Топлотехника V6.0.16.xlsx` (tracked per the Session 4 decision
+above) is linked into the App project's build output as
+`Assets/Template.xlsx` (`CopyToOutputDirectory`), so the app works
+regardless of where it's installed relative to the source tree. The
+Work page's "Extract & Fill Excel" button writes to a scratch temp file
+via `FloorProcessor.ProcessAndWriteFloors`, never touching the bundled
+template; "Download filled Excel" then lets the user Save As. There is
+no template *file picker* in the UI — this wasn't asked for and the
+bundled-template approach avoids a whole class of "wrong file selected"
+mistakes.
+
+**Compass control: ended on a hand-drawn vector needle, not an image.**
+Went through three iterations this session: (1) image-based
+(`compass.png`/`compass-dark.png` supplied by the user, theme-swapped),
+(2) user decided against the images entirely ("I don't like it like
+that"), (3) replaced with `Controls/CompassControl` — a fixed dial
+(N/E/S/W + intercardinal NE/SE/SW/NW, never rotates) with a needle that
+animates to the selected direction via `RotateTransform` + shortest-path
+`DoubleAnimation` (`CompassControl.AnimateTo`, unbounded running angle
+so e.g. NW→N animates +45° forward rather than spinning −315° backward).
+The supplied PNG assets were deleted from the repo — not kept as a
+fallback option.
+
+**Light/dark theme system.** `ThemeManager` swaps
+`Resources/Theme.Light.xaml` / `Theme.Dark.xaml` merged dictionaries at
+runtime; every themed brush reference had to move from `StaticResource`
+to `DynamicResource` for the swap to apply live without restarting the
+app (this includes a from-scratch themed `TextBox`/`ComboBox` template,
+since the default WPF chrome ignores custom brushes for those two
+controls). Page backgrounds are bright gradients per theme, not flat
+fills, per explicit user request. Not originally in the Phase 3 plan —
+added at user request this session, on top of the base UI work.
+
+**Bug found and fixed: `Run.Text` binding crash on the Projects list.**
+`<Run Text="{Binding CreatedAt, StringFormat=...}"/>` defaults to a
+`TwoWay` binding for `Run.Text`; `CreatedAt` is a get-only property, and
+WPF throws a `XamlParseException` the instant the binding engine tries
+to attach it — which only happens once the Projects list actually
+renders a row (an empty list never applies the `DataTemplate`, so the
+bug was invisible on first load and only surfaced via Start → Create
+project → Back). Fixed with an explicit `Mode=OneWay`. Confirmed via a
+scripted UI Automation repro of the exact reported flow against the
+real built `.exe`, before and after the fix — not just code review.
+
+**Added a permanent global exception handler** (`App.xaml.cs`,
+`DispatcherUnhandledException`) that logs full details to
+`%TEMP%\hvacrate-crash.log` and shows a friendly error dialog instead of
+a silent hard crash. This is what surfaced the real stack trace for the
+bug above; kept in permanently as a safety net rather than removed after
+diagnosis.
+
+**Still open / deferred, carried forward:**
+- 2D preview of recognized walls/windows, and a results-review table
+  before writing — neither built yet (see plan.md Phase 3).
+- Instructions page is still a stub — blocked on the user recording a
+  screen-capture video of the (now more stable) Work page.
+- OVK edge-case testing (non-rectangular plan, rotated/non-zero-north
+  building, corner tie-break) — still deferred, per the Session 4
+  decision above.

@@ -57,13 +57,40 @@
 
 ## Phase 3 — WPF UI
 
-- [ ] DXF file picker
-- [ ] Manual input form: floor height, north direction, wall layer name
+- [x] Start menu page — title, "Start" (-> Projects) and "Instructions"
+      buttons
+- [x] Projects menu — sits between Start and the Floors page. Lists
+      projects (name, floor count, creation date) with Open/Delete;
+      "+ New Project" creates and opens one. **In-memory only, per user
+      instruction — not persisted across app restarts.** See
+      decisions.md, 2026-08-05 (Phase 3 UI session).
+- [x] DXF file picker — per floor, via `OpenFileDialog`
+- [x] Manual input form: floor height (per floor) and north/"up"
+      direction (dropdown, full compass names, drives an animated
+      custom vector compass control). Wall-layer-name input dropped —
+      moot now that `OvkLayer` is a hardcoded final value (see
+      decisions.md, 2026-08-05, Session 4).
+- [x] Support repeating the process for multiple floors in one project
+      — dynamic add/remove floor rows on the Work page
+- [x] "Extract & Fill Excel" button + "Download filled Excel" button —
+      runs the real `FloorProcessor` pipeline against the bundled
+      template into a scratch temp file, then lets the user Save As.
+      No separate template *picker* — the blank template is bundled
+      into the app's own output folder (`Assets/Template.xlsx`,
+      linked from `output/Топлотехника V6.0.16.xlsx`) rather than
+      chosen per run.
+- [x] Light/dark theme toggle (persistent, top-right of the window),
+      gradient page backgrounds, themed inputs — not in the original
+      Phase 3 scope, added per user request this session.
 - [ ] 2D preview of the recognized walls/windows (canvas) — for visual
-      verification that the correct elements are being read
-- [ ] Results table before writing
-- [ ] Excel file (template) picker + "Write" button
-- [ ] Support repeating the process for multiple floors in one project
+      verification that the correct elements are being read — **not
+      built yet**
+- [ ] Results table before writing — **not built**; current flow goes
+      straight from "Extract & Fill" to a success message + download,
+      no interim review step
+- [ ] Instructions page — stub only (placeholder text). Real content
+      (user's screen-recorded video + written step-by-step) blocked on
+      the user recording the video once the Work page is stable.
 
 ## Phase 4 — Packaging and distribution
 

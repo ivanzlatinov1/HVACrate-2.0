@@ -225,3 +225,84 @@ real Floor I validation, exterior corner count
   geometric-characteristics block). PR not yet opened — no `gh` CLI
   available in this environment; user to open it manually via
   <https://github.com/ivanzlatinov1/HVACrate-2.0/pull/new/phase1-excel-writing>
+
+---
+
+## 2026-08-05 — Session 4 (branch `phase2-cleanup`, merged to `main`)
+
+**Done:**
+
+- Closed out four open Phase 2 items per user decision: H/I/J columns
+  left permanently blank, `OvkLayer` name finalized as hardcoded
+  `"OVK"`/`"ovk"` (not configurable), `AC_WIDO_ID` marker attribute
+  confirmed unused, and the blank Excel template
+  (`output/Топлотехника V6.0.16.xlsx`) tracked in git (was previously
+  assumed to be live client data and left untracked — that assumption
+  was wrong for this file).
+- Logged all four as final decisions in `docs/decisions.md`; updated
+  `docs/plan.md` checklist.
+- Branch merged to `main` (via GitHub, outside this session).
+
+**Open for the next session:** start Phase 3 (WPF UI).
+
+---
+
+## 2026-08-05 — Session 5 (branches `phase3-wpf` +
+`phase3-projects-menu`, both merged to `main`)
+
+**Context:** first UI-building session. Started Phase 3 from scratch —
+a blank `MainWindow.xaml` and no pages existed yet.
+
+**Done:**
+
+- Refactored `HVACrate2.Core.Program.Main`'s console-only logic into a
+  reusable public API (`FloorProcessor.ProcessFloor` /
+  `WriteFloorToExcel` / `ProcessAndWriteFloors`, plus `FloorInput`/
+  `FloorResult` models) so the app can drive it for an arbitrary number
+  of floors. Re-verified against `samples/floor1.dxf` after the
+  refactor — output unchanged.
+- Built the navigation shell (`Frame`-based) and every page: Start menu
+  (title, Start/Instructions buttons), a Projects menu (list of
+  in-memory projects — name, floor count, creation date, Open/Delete,
+  "+ New Project"), the Work/Floors page (dynamic per-floor DXF
+  picker + height + north-direction dropdown, Extract & Fill Excel,
+  Download filled Excel), and an Instructions page stub.
+- Excel template is bundled into the app's build output
+  (`Assets/Template.xlsx`, linked from the tracked
+  `output/Топлотехника V6.0.16.xlsx`) rather than picked per run;
+  "Extract & Fill" writes to a scratch temp file, "Download" lets the
+  user Save As — the bundled template itself is never touched.
+- Added, at user request mid-session: a light/dark theme toggle
+  (`ThemeManager` swapping merged `ResourceDictionary` themes at
+  runtime, all themed brushes moved to `DynamicResource`, including a
+  from-scratch themed `TextBox`/`ComboBox` template), bright gradient
+  page backgrounds per theme, and a glowing/shadowed page title.
+- Compass direction control went through three iterations: image-based
+  (user-supplied `compass.png` / `compass-dark.png`, theme-swapped) →
+  user rejected the image approach entirely → replaced with a
+  hand-drawn vector `CompassControl` (fixed N/E/S/W + intercardinal
+  dial, animated needle with shortest-path rotation). The PNG assets
+  were deleted, not kept as a fallback.
+- **Bug found and fixed:** Start → Create project → Back threw a
+  `XamlParseException` (`Run.Text` binding on `CreatedAt` defaulted to
+  `TwoWay` against a read-only property). Root-caused by adding a
+  temporary crash logger, then confirmed fixed via a scripted UI
+  Automation repro of the exact reported flow against the real built
+  `.exe`, before and after the fix — not just code review. Kept a
+  permanent friendly-error `DispatcherUnhandledException` handler
+  (logs to `%TEMP%\hvacrate-crash.log`) as a safety net going forward.
+- Both feature branches merged to `main` this session (`phase3-wpf`,
+  and `phase3-projects-menu` merged into `phase3-wpf` first per user
+  request to keep the Projects-menu work isolated).
+
+**Open for the next session:**
+
+- 2D preview of recognized walls/windows, and a results-review table
+  before the final Excel write — neither built yet.
+- Instructions page is still a stub — blocked on the user recording a
+  screen-capture video of the (now more stable) Work page; written
+  step-by-step instructions also still needed.
+- OVK edge-case testing (non-rectangular plan, rotated/non-zero-north
+  building, corner tie-break) — still deferred from Session 3/4.
+- Everything else carried over (see decisions.md, 2026-08-05 Phase 3
+  entry) is still open.

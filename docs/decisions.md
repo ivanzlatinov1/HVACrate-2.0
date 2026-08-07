@@ -513,3 +513,88 @@ the earlier 2026-08-04 decision to track `samples/floor1.dxf` for
 Phase 1 validation reproducibility — that validation already happened
 and is recorded in this file, so the file no longer needs to live in
 git for that purpose.
+
+---
+
+## 2026-08-07 — Apartment count drives the "electric consumers"/lamp Excel
+block; per-floor input, but written as one building-wide total
+
+**Decision:** added an "Apartments" input per floor row on the Work
+page (next to height and up-direction), and used it to fill in cells
+that the user previously had to compute and enter by hand:
+`D317`=stoves, `D321`=fridges, `D331`=TVs (2x), `D332`=laundries,
+`D333`=PCs (2x), `D336`=others (5x), `D348`=occupant count — all equal
+to or a multiple of the apartment count — and `D291`=lamps, computed
+as `ceil(7 * totalFloorArea / 20)` (initially plain rounding, changed
+to always-round-up per explicit user follow-up the same session).
+
+**Reason these are building totals, not per-floor:** unlike the
+per-floor blocks (geometric characteristics row 7+i, wall description
+row 31+i, openings table), this "Описание на електроуредите..."
+section only exists once in the template — it is a whole-building
+electrical load calculation, not a per-floor one. So although the
+apartment-count *input* is collected per floor (matching how
+height/direction already work in the UI), `FloorProcessor.ProcessAndWriteFloors`
+sums `ApartmentCount` and `AreaM2` across every floor in the project
+and writes the appliance block exactly once, after the per-floor loop
+— see `WriteApplianceBlock` in `src/HVACrate2.Core/FloorProcessor.cs`.
+
+**Overwrote pre-existing template formulas.** The target cells already
+had formulas chaining off each other in the blank template (e.g.
+`D321='=D317'`, `D332='=D321'`, `D333='=D331'`, `D336='=D333*3'`,
+`D291='=4*(D317*3+D331)'`) — apparently the engineer's own manual
+shortcut formulas. `D336`'s old `*3` multiplier against `D333` (itself
+`=D331`, i.e. 2×apartments) would have given 6×apartments, not the
+5×apartments the user asked for — so all six cells are now written as
+plain literal values by the app, replacing whatever formula was there,
+per explicit instruction to fill these specific cells with these exact
+multiples.
+
+**Validated:** built a throwaway console harness (referencing
+`HVACrate2.Core.dll` directly) against `samples/floor2.dxf` with two
+synthetic floors (3 + 2 apartments = 5 total). Result: D317=D321=D332=5,
+D331=D333=10, D336=25, D348=5, D291=142 (ceil of 141.288, computed from
+the two floors' combined area) — all matching spec.
+
+---
+
+## 2026-08-07 — Loading spinner on "Extract & Fill Excel"; extraction
+moved off the UI thread
+
+**Decision:** added `Controls/LoadingSpinner` (a UserControl with a
+partial-ring `Path` + `RotateTransform`, animated via the same
+`EventTrigger`-on-`Loaded` + `Storyboard` pattern as the existing
+`CompassControl` needle) and show it next to the Extract button while
+`FloorProcessor.ProcessAndWriteFloors` runs. `OnExtractClick` is now
+`async void`, running the actual processing via `Task.Run` so the UI
+thread stays responsive and the spinner animates; the Extract button
+is disabled for the duration.
+
+**Reason:** extraction (DXF parse + Excel write) was previously
+synchronous on the UI thread — for larger DXFs or multi-floor projects
+this could freeze the window with no feedback. A custom control was
+used instead of a stock WPF `ProgressBar` (whose indeterminate style is
+a sliding bar, not a circular spinner) to match the app's existing
+hand-drawn-vector-control aesthetic (see the compass control decision,
+2026-08-05).
+
+**Also same session:** the "Download filled Excel" dialog's default
+file name was changed from `Топлотехника.xlsx` to
+`Топлотехника V6.0.16.xlsx`, matching the real template's name.
+The Projects page's "New project name..." textbox placeholder is now
+horizontally centered (`TextAlignment="Center"` on the placeholder
+`TextBlock` in the shared `TextBox` control template in `App.xaml`) —
+previously left-aligned like normal typed text. This shared style
+otherwise only affects textboxes that set a `Tag` placeholder (only
+this one currently does), so no other input's behavior changed.
+
+**Testing note:** verified via `dotnet build` (catches XAML markup
+errors, as it did for the earlier `Run.Text` binding bug) and by
+launching the real built `.exe` and driving it with `System.Windows.Automation`
+to reach the Work page and confirm no crash/layout issue. Did not
+force the native `OpenFileDialog` via automation to get a live
+screenshot of the spinner mid-animation, since scripting native
+dialogs on the real desktop (not a sandbox) is more failure-prone and
+was judged not worth the added risk for this change — confidence
+instead comes from reusing the already-proven `CompassControl`
+animation mechanism.

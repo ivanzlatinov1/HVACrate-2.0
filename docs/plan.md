@@ -94,6 +94,14 @@
       result. Videos resolve local-first (`videos/`, gitignored) and
       fall back to hosted GitHub Releases URLs otherwise — see
       decisions.md, 2026-08-05 (Instructions page session).
+- [x] Per-floor "Apartments" input (next to height/direction on the
+      Work page) — drives the building-wide "electric consumers"/lamp
+      block in the Excel template (stoves, fridges, TVs, laundries,
+      PCs, others, lamps, occupant count). See decisions.md,
+      2026-08-07.
+- [x] Loading indicator on "Extract & Fill Excel" — custom animated
+      spinner control, extraction now runs off the UI thread. See
+      decisions.md, 2026-08-07.
 
 ## Phase 4 — Packaging and distribution
 

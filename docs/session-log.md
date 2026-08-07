@@ -348,3 +348,56 @@ to `main`)
   clean-machine test, GitHub Releases upload, static-site link.
 - Everything else carried over (see decisions.md, 2026-08-05
   Instructions page entry) is still open.
+
+---
+
+## 2026-08-07 — Session 7 (branches `feature/apartment-appliance-calcs`
+and `feature/extract-loading-spinner`, both merged to `main`)
+
+**Done:**
+
+- Added an "Apartments" input per floor row on the Work page (next to
+  height and up-direction). `FloorProcessor.ProcessAndWriteFloors` now
+  sums apartment count and floor area across all floors in the project
+  and writes the building-wide "electric consumers"/lamp block in the
+  Excel template exactly once (that section exists only once in the
+  template, unlike the per-floor blocks): `D317`/`D321`/`D332` =
+  apartments, `D331`/`D333` = 2×apartments, `D336` = 5×apartments,
+  `D348` = apartments (occupant count), `D291` = lamps =
+  `ceil(7 × totalFloorArea / 20)` (changed to always-round-up after a
+  user follow-up the same session; started as plain rounding). This
+  overwrites six cells that had pre-existing chained formulas in the
+  blank template — done deliberately, since the old `D336` formula
+  (`=D333*3`) would have given 6×apartments, not the 5× the user
+  wanted. Verified with a throwaway console harness against
+  `samples/floor2.dxf` (two synthetic floors, 3+2 apartments) — all
+  six cells plus D291/D348 matched spec exactly. See decisions.md,
+  2026-08-07.
+- Added a loading spinner (`Controls/LoadingSpinner`, same
+  rotate-storyboard pattern as the existing compass needle) shown on
+  the Work page while "Extract & Fill Excel" runs; the extraction
+  pipeline now runs via `Task.Run` instead of blocking the UI thread,
+  and the Extract button disables for the duration.
+- Two small fixes in the same branch, per user follow-up: the
+  "Download filled Excel" dialog's default filename now matches the
+  real template name (`Топлотехника V6.0.16.xlsx`, was just
+  `Топлотехника.xlsx`); the Projects page's "New project name..."
+  textbox placeholder is now horizontally centered instead of
+  left-aligned (shared `TextBox` template in `App.xaml`).
+- Verified both branches via `dotnet build` and by launching the real
+  `.exe` and driving it with `System.Windows.Automation` to reach the
+  Work/Projects pages and confirm no crash. Did not automate the
+  native `OpenFileDialog` to get a live screenshot of the spinner
+  mid-spin — judged not worth the added risk of scripting native
+  dialogs on the real (non-sandboxed) desktop for this change.
+- Both branches merged to `main` and pushed to `origin`.
+
+**Open for the next session:**
+
+- 2D preview of recognized walls/windows, and a results-review table
+  before the final Excel write — neither built yet.
+- OVK edge-case testing (non-rectangular plan, rotated/non-zero-north
+  building, corner tie-break) — still deferred from Session 3/4.
+- Phase 4 (packaging/distribution) not started.
+- Everything else carried over (see decisions.md, 2026-08-07 entries)
+  is still open.

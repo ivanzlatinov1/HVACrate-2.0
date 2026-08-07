@@ -90,7 +90,7 @@ public partial class WorkPage : Page
         StatusText.Visibility = Visibility.Visible;
     }
 
-    private void OnExtractClick(object sender, RoutedEventArgs e)
+    private async void OnExtractClick(object sender, RoutedEventArgs e)
     {
         DownloadButton.Visibility = Visibility.Collapsed;
         StatusText.Visibility = Visibility.Collapsed;
@@ -132,14 +132,21 @@ public partial class WorkPage : Page
 
         string outputPath = Path.Combine(Path.GetTempPath(), $"HVACrate_{Guid.NewGuid():N}.xlsx");
 
+        ExtractButton.IsEnabled = false;
+        ExtractSpinner.Visibility = Visibility.Visible;
         try
         {
-            FloorProcessor.ProcessAndWriteFloors(floorInputs, templatePath, outputPath);
+            await Task.Run(() => FloorProcessor.ProcessAndWriteFloors(floorInputs, templatePath, outputPath));
         }
         catch (Exception ex)
         {
             ShowError($"Extraction failed: {ex.Message}");
             return;
+        }
+        finally
+        {
+            ExtractSpinner.Visibility = Visibility.Collapsed;
+            ExtractButton.IsEnabled = true;
         }
 
         _lastOutputPath = outputPath;
@@ -158,7 +165,7 @@ public partial class WorkPage : Page
         var dialog = new SaveFileDialog
         {
             Title = "Save filled Excel file",
-            FileName = "Топлотехника.xlsx",
+            FileName = "Топлотехника V6.0.16.xlsx",
             Filter = "Excel workbook (*.xlsx)|*.xlsx",
         };
         if (dialog.ShowDialog() == true)

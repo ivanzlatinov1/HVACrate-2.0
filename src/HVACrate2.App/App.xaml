@@ -87,6 +87,7 @@
                                     <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}"
                                                Foreground="{DynamicResource TextSecondaryBrush}"
                                                Margin="{TemplateBinding Padding}"
+                                               HorizontalAlignment="Stretch" TextAlignment="Center"
                                                VerticalAlignment="Center" IsHitTestVisible="False"
                                                Visibility="Collapsed" />
                                     <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" />

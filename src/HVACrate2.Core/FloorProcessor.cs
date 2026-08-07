@@ -241,6 +241,21 @@ public static class FloorProcessor
         }
     }
 
+    /// <summary>Writes the building-wide "electric consumers" / lamp counts, derived from total apartment count and total floor area across all floors.</summary>
+    private static void WriteApplianceBlock(XLWorkbook wb, int totalApartments, double totalAreaM2)
+    {
+        var ws = wb.Worksheet("Изчисления");
+
+        ws.Cell("D317").Value = totalApartments;                 // Готварска печка (stoves)
+        ws.Cell("D321").Value = totalApartments;                 // Хладилник (refrigerators)
+        ws.Cell("D331").Value = 2 * totalApartments;              // Телевизори (TVs)
+        ws.Cell("D332").Value = totalApartments;                 // Пералня (laundries)
+        ws.Cell("D333").Value = 2 * totalApartments;              // Компютри (PCs)
+        ws.Cell("D336").Value = 5 * totalApartments;              // Други (others)
+        ws.Cell("D291").Value = Math.Ceiling(7 * totalAreaM2 / 20.0); // Лампи (lamps)
+        ws.Cell("D348").Value = totalApartments;                 // Хора (people)
+    }
+
     /// <summary>
     /// Full pipeline for a building: processes each floor's DXF (in order, floor 0 = Floor I) and
     /// writes all results into a copy of the template workbook saved at <paramref name="outputExcelPath"/>.
@@ -250,11 +265,16 @@ public static class FloorProcessor
         IReadOnlyList<FloorInput> floors, string templateExcelPath, string outputExcelPath, string ovkLayer = "OVK")
     {
         using var wb = new XLWorkbook(templateExcelPath);
+        int totalApartments = 0;
+        double totalAreaM2 = 0.0;
         for (int i = 0; i < floors.Count; i++)
         {
             var result = ProcessFloor(floors[i], ovkLayer);
             WriteFloorToExcel(wb, floors[i], result, i);
+            totalApartments += floors[i].ApartmentCount;
+            totalAreaM2 += result.AreaM2;
         }
+        WriteApplianceBlock(wb, totalApartments, totalAreaM2);
         wb.SaveAs(outputExcelPath);
     }
 }

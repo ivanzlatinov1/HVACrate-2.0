@@ -109,11 +109,17 @@ public partial class WorkPage : Page
                 ShowError($"Floor {row.FloorNumber}: enter a valid height in meters.");
                 return;
             }
+            if (!row.TryGetApartmentCount(out int apartmentCount))
+            {
+                ShowError($"Floor {row.FloorNumber}: enter a valid number of apartments.");
+                return;
+            }
             floorInputs.Add(new FloorInput
             {
                 DxfPath = row.DxfPath,
                 HeightM = heightM,
                 NorthDeg = row.SelectedDirection.Degrees,
+                ApartmentCount = apartmentCount,
             });
         }
 

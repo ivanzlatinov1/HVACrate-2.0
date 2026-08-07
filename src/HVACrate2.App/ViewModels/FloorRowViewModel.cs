@@ -37,6 +37,16 @@ public sealed class FloorRowViewModel : INotifyPropertyChanged
     public bool TryGetHeightM(out double heightM)
         => double.TryParse(HeightText.Replace(",", "."), out heightM) && heightM > 0;
 
+    private string _apartmentsText = "";
+    public string ApartmentsText
+    {
+        get => _apartmentsText;
+        set { _apartmentsText = value; Raise(); }
+    }
+
+    public bool TryGetApartmentCount(out int apartmentCount)
+        => int.TryParse(ApartmentsText, out apartmentCount) && apartmentCount > 0;
+
     private CompassDirectionOption _selectedDirection = CompassDirectionOption.All[0];
     public CompassDirectionOption SelectedDirection
     {

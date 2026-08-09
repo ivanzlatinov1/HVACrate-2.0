@@ -318,6 +318,170 @@ internal static class WallTopology
     }
 
     /// <summary>
+    /// True only if the host wall's own geometry contributes at least one node that is itself
+    /// OVK-coincident — i.e. this wall physically forms part of the exterior perimeter, not merely
+    /// touches it through a connector or T-junction. Validated against real data (see
+    /// docs/decisions.md, wall-topology investigation): every genuine facade wall in the sample set
+    /// owns 6-7 of its own nodes on the OVK boundary; every connector/corridor wall that reaches OVK
+    /// only via a foreign wall's node owns exactly zero — a clean binary split, not a threshold call.
+    /// </summary>
+    internal static bool HostWallOwnsOvkNode(List<(double x, double y)> hostNodes, WallGraph graph)
+        => hostNodes.Any(n => graph.OvkNodes.Contains(n));
+
+    internal sealed class WallBlockGeometry
+    {
+        public string Name = "";
+        public readonly List<(double x, double y)> Nodes = new();
+        public readonly List<((double x, double y) a, (double x, double y) b)> Segments = new();
+    }
+
+    /// <summary>
+    /// Indexes every top-level-inserted block's own wall-layer geometry (nested convention: each
+    /// Wall_N_2 block is inserted exactly once, with an identity transform — see decisions.md,
+    /// 2026-08-04). Built once per document and reused across every opening in it.
+    /// </summary>
+    internal static Dictionary<string, WallBlockGeometry> BuildWallBlockIndex(DxfDocument doc, double coordDivisor)
+    {
+        var index = new Dictionary<string, WallBlockGeometry>();
+        foreach (var insert in doc.Entities.Inserts)
+        {
+            if (index.ContainsKey(insert.Block.Name)) continue;
+            var geom = new WallBlockGeometry { Name = insert.Block.Name };
+            void AddSeg((double x, double y) rawA, (double x, double y) rawB)
+            {
+                var wa = TransformPoint(rawA.x, rawA.y, insert);
+                var wb = TransformPoint(rawB.x, rawB.y, insert);
+                var a = Snap(wa.x / coordDivisor, wa.y / coordDivisor);
+                var b = Snap(wb.x / coordDivisor, wb.y / coordDivisor);
+                if (a == b) return;
+                geom.Nodes.Add(a); geom.Nodes.Add(b);
+                geom.Segments.Add((a, b));
+            }
+            foreach (var l in insert.Block.Entities.OfType<Line>().Where(l => IsWallLayer(l.Layer.Name)))
+                AddSeg((l.StartPoint.X, l.StartPoint.Y), (l.EndPoint.X, l.EndPoint.Y));
+            foreach (var p in insert.Block.Entities.OfType<Polyline2D>().Where(p => IsWallLayer(p.Layer.Name)))
+            {
+                var verts = p.Vertexes.Select(v => (v.Position.X, v.Position.Y)).ToList();
+                for (int i = 0; i < verts.Count - 1; i++) AddSeg(verts[i], verts[i + 1]);
+            }
+            if (geom.Segments.Count > 0) index[insert.Block.Name] = geom;
+        }
+        return index;
+    }
+
+    // Length-weighted average orientation of a block's own segments, mod 180 degrees (a wall's
+    // direction has no forward/backward sense) — the standard doubled-angle trick so a mix of
+    // "0 deg" and "179 deg" segments (same line, opposite winding) doesn't average to 90 deg.
+    private static double BlockDominantAngleDeg(WallBlockGeometry geom)
+    {
+        double sumSin = 0, sumCos = 0;
+        foreach (var (a, b) in geom.Segments)
+        {
+            double dx = b.x - a.x, dy = b.y - a.y;
+            double len = Math.Sqrt(dx * dx + dy * dy);
+            if (len < 1e-9) continue;
+            double theta = Math.Atan2(dy, dx);
+            sumSin += len * Math.Sin(2 * theta);
+            sumCos += len * Math.Cos(2 * theta);
+        }
+        if (Math.Abs(sumSin) < 1e-9 && Math.Abs(sumCos) < 1e-9) return 0.0;
+        double deg = 0.5 * Math.Atan2(sumSin, sumCos) * 180.0 / Math.PI;
+        return deg < 0 ? deg + 180.0 : deg;
+    }
+
+    private static double AngleDiffMod180(double a, double b)
+    {
+        double d = Math.Abs(a - b) % 180.0;
+        return Math.Min(d, 180.0 - d);
+    }
+
+    internal sealed class WallRun
+    {
+        public readonly List<string> BlockNames = new();
+        public readonly HashSet<(double x, double y)> Nodes = new();
+        public bool OwnsGenuineOvkSegment;
+    }
+
+    /// <summary>
+    /// Reconstructs the continuous physical wall a Wall_N_2 block belongs to: walks outward through
+    /// every neighboring block that (a) shares an endpoint with the current block and (b) continues
+    /// in roughly the same direction (within <see cref="MaxCollinearDeviationDeg"/> of the current
+    /// block's own dominant orientation — the same corner-vs-continuation distinction
+    /// <see cref="FindExteriorOvkPaths"/> already applies at the node level, applied here at the
+    /// block level). Stops at a real ~90 degree turn or a dead end.
+    /// Nested convention only: verified by direct investigation (docs/decisions.md) that the CAD
+    /// exporter gives each short pier/segment between openings its own named block with no explicit
+    /// link between them (no XDATA, extension dictionary, or reactor connects sibling blocks) — a
+    /// wall run reconstructs that missing link from geometry (shared endpoints + collinearity) alone.
+    /// "Owns a genuine OVK segment" requires an actual block in the run to have a segment whose BOTH
+    /// endpoints sit within drafting tolerance of the SAME finite OVK edge — i.e. the run's own
+    /// geometry runs along the boundary, not merely touches it at one corner (see docs/decisions.md:
+    /// a corner touch alone does not distinguish a facade run from a connector/T-junction wall).
+    /// </summary>
+    internal static WallRun BuildWallRun(
+        Dictionary<string, WallBlockGeometry> blockIndex, WallGraph graph,
+        List<(double x1, double y1, double x2, double y2)> ovkEdges, string startBlockName)
+    {
+        var run = new WallRun();
+        if (!blockIndex.TryGetValue(startBlockName, out var startGeom)) return run;
+
+        var nodeOwners = new Dictionary<(double x, double y), List<string>>();
+        foreach (var (name, geom) in blockIndex)
+            foreach (var n in geom.Nodes)
+            {
+                if (!nodeOwners.TryGetValue(n, out var owners)) nodeOwners[n] = owners = new();
+                owners.Add(name);
+            }
+
+        bool OwnsGenuine(WallBlockGeometry geom) => geom.Segments.Any(s =>
+            ovkEdges.Any(e => DistancePointToSegment(s.a.x, s.a.y, e.x1, e.y1, e.x2, e.y2) <= OvkNodeToleranceM
+                            && DistancePointToSegment(s.b.x, s.b.y, e.x1, e.y1, e.x2, e.y2) <= OvkNodeToleranceM));
+
+        void AddBlockToRun(string name, WallBlockGeometry geom)
+        {
+            run.BlockNames.Add(name);
+            foreach (var n in geom.Nodes) run.Nodes.Add(n);
+            if (OwnsGenuine(geom)) run.OwnsGenuineOvkSegment = true;
+        }
+
+        var visited = new HashSet<string> { startBlockName };
+        AddBlockToRun(startBlockName, startGeom);
+        double startAngle = BlockDominantAngleDeg(startGeom);
+
+        void WalkDirection(string first)
+        {
+            string? current = first;
+            while (current is not null)
+            {
+                if (!visited.Add(current)) return;
+                if (!blockIndex.TryGetValue(current, out var curGeom)) return;
+                AddBlockToRun(current, curGeom);
+
+                double curAngle = BlockDominantAngleDeg(curGeom);
+                var next = curGeom.Nodes
+                    .SelectMany(n => nodeOwners.TryGetValue(n, out var o) ? o : new List<string>())
+                    .Distinct()
+                    .Where(n => n != current && !visited.Contains(n) && blockIndex.ContainsKey(n))
+                    .Where(n => AngleDiffMod180(BlockDominantAngleDeg(blockIndex[n]), curAngle) <= MaxCollinearDeviationDeg)
+                    .ToList();
+                current = next.Count > 0 ? next[0] : null;
+            }
+        }
+
+        var initialDirections = startGeom.Nodes
+            .SelectMany(n => nodeOwners.TryGetValue(n, out var o) ? o : new List<string>())
+            .Distinct()
+            .Where(n => n != startBlockName && blockIndex.ContainsKey(n))
+            .Where(n => AngleDiffMod180(BlockDominantAngleDeg(blockIndex[n]), startAngle) <= MaxCollinearDeviationDeg)
+            .Take(2); // a linear wall run has at most two continuations from any interior block
+
+        foreach (var d in initialDirections)
+            if (!visited.Contains(d)) WalkDirection(d);
+
+        return run;
+    }
+
+    /// <summary>
     /// Finds every path — as a full sequence of wall-graph nodes, not just a single edge — from any
     /// of the opening's host-wall candidates to an OVK-coincident node, following the SAME wall run
     /// at each step (not the wall network at large). This is the distinction the classification

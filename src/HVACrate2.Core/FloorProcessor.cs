@@ -38,7 +38,18 @@ public static class FloorProcessor
         return sum / 2.0;
     }
 
-    private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer)
+    // Most sample projects author DXF coordinates in centimeters (divide raw units by 100 for
+    // meters). Some exports (confirmed on a real Archicad file) instead use millimeters, despite
+    // declaring an unrelated/generic $INSUNITS header value identical to the centimeter files —
+    // that header cannot be trusted to tell the two conventions apart. See DetectCoordinateDivisor.
+    private const double CentimeterDivisor = 100.0;
+    private const double MillimeterDivisor = 1000.0;
+
+    // No real single floor plate is this large — used only to pick between the two known
+    // real-world DXF unit conventions above, not as an opening-classification heuristic.
+    private const double ImplausibleFloorAreaM2 = 20000.0;
+
+    private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer, double coordDivisor)
     {
         // Ensure the vertex list ends with a duplicate of the first vertex, regardless of
         // whether the source polyline closes via an explicit repeated vertex or via its
@@ -58,7 +69,7 @@ public static class FloorProcessor
 
         var candidates = doc.Entities.Polylines2D
             .Where(p => p.Layer.Name.Contains(ovkLayer))
-            .Select(p => ToClosedRing(p.Vertexes.Select(v => (v.Position.X / 100.0, v.Position.Y / 100.0))))
+            .Select(p => ToClosedRing(p.Vertexes.Select(v => (v.Position.X / coordDivisor, v.Position.Y / coordDivisor))))
             .Where(v => v.Count >= 4)
             .ToList();
 
@@ -70,6 +81,18 @@ public static class FloorProcessor
         // The true exterior envelope always encloses the largest area of any of them,
         // so pick that one instead of just the first match found in the file.
         return candidates.OrderByDescending(v => Math.Abs(SignedArea(v))).First();
+    }
+
+    /// <summary>
+    /// Picks the coordinate-to-meters divisor for this file: centimeters by default, falling back
+    /// to millimeters only if that produces an implausible floor area. A real floor plate's area
+    /// scales as the square of the divisor error, so the two conventions are never close enough to
+    /// confuse — a centimeter-file misread as millimeters undershoots by 100x, not by a few percent.
+    /// </summary>
+    private static double DetectCoordinateDivisor(DxfDocument doc, string ovkLayer)
+    {
+        var atCm = OvkVertices(doc, ovkLayer, CentimeterDivisor);
+        return Math.Abs(SignedArea(atCm)) <= ImplausibleFloorAreaM2 ? CentimeterDivisor : MillimeterDivisor;
     }
 
     private static List<(double x1, double y1, double x2, double y2)> OvkEdges(List<(double x, double y)> vertices)
@@ -141,7 +164,7 @@ public static class FloorProcessor
 
     private static List<Opening> ExtractOpeningsTouchingOvk(
         DxfDocument doc, List<(double x1, double y1, double x2, double y2)> ovkEdges,
-        double northDeg, double ccwSign, double toleranceM = 0.5)
+        double northDeg, double ccwSign, double coordDivisor, double toleranceM = 0.5)
     {
         var markers = doc.Entities.Inserts
             .Concat(doc.Blocks.SelectMany(b => b.Entities.OfType<Insert>()))
@@ -156,7 +179,7 @@ public static class FloorProcessor
             if (!double.TryParse(wStr.Replace(",", "."), out double widthCm)) continue;
             if (!double.TryParse(hStr.Replace(",", "."), out double heightCm)) continue;
 
-            double px = ins.Position.X / 100.0, py = ins.Position.Y / 100.0;
+            double px = ins.Position.X / coordDivisor, py = ins.Position.Y / coordDivisor;
             string? dir = NearestOvkDirection(px, py, ovkEdges, northDeg, ccwSign, toleranceM);
             if (dir == null) continue;
 
@@ -200,7 +223,8 @@ public static class FloorProcessor
     {
         var doc = DxfDocument.Load(input.DxfPath);
 
-        var ovkVertices = OvkVertices(doc, ovkLayer);
+        double coordDivisor = DetectCoordinateDivisor(doc, ovkLayer);
+        var ovkVertices = OvkVertices(doc, ovkLayer, coordDivisor);
         var ovkEdges = OvkEdges(ovkVertices);
         double signedArea = SignedArea(ovkVertices);
         double ccwSign = Math.Sign(signedArea);
@@ -210,7 +234,7 @@ public static class FloorProcessor
         double volumeM3 = areaM2 * input.HeightM;
         int convexCorners = CountConvexCorners(ovkVertices, ccwSign);
 
-        var openings = ExtractOpeningsTouchingOvk(doc, ovkEdges, input.NorthDeg, ccwSign);
+        var openings = ExtractOpeningsTouchingOvk(doc, ovkEdges, input.NorthDeg, ccwSign, coordDivisor);
         var openingGroups = GroupOpenings(openings);
 
         return new FloorResult

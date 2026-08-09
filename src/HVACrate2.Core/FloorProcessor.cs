@@ -40,9 +40,36 @@ public static class FloorProcessor
 
     private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer)
     {
-        var poly = doc.Entities.Polylines2D.FirstOrDefault(p => p.Layer.Name.Contains(ovkLayer))
-            ?? throw new InvalidOperationException($"Не е намерена гранична полилиния на слой '{ovkLayer}'.");
-        return poly.Vertexes.Select(v => (v.Position.X / 100.0, v.Position.Y / 100.0)).ToList();
+        // Ensure the vertex list ends with a duplicate of the first vertex, regardless of
+        // whether the source polyline closes via an explicit repeated vertex or via its
+        // "closed" flag — every other function in this file assumes the former.
+        List<(double x, double y)> ToClosedRing(IEnumerable<(double x, double y)> raw)
+        {
+            var pts = raw.ToList();
+            if (pts.Count >= 2)
+            {
+                var (fx, fy) = pts[0];
+                var (lx, ly) = pts[^1];
+                if (Math.Abs(fx - lx) > 1e-6 || Math.Abs(fy - ly) > 1e-6)
+                    pts.Add(pts[0]);
+            }
+            return pts;
+        }
+
+        var candidates = doc.Entities.Polylines2D
+            .Where(p => p.Layer.Name.Contains(ovkLayer))
+            .Select(p => ToClosedRing(p.Vertexes.Select(v => (v.Position.X / 100.0, v.Position.Y / 100.0))))
+            .Where(v => v.Count >= 4)
+            .ToList();
+
+        if (candidates.Count == 0)
+            throw new InvalidOperationException($"Не е намерена гранична полилиния на слой '{ovkLayer}'.");
+
+        // The OVK layer can hold more than just the building envelope — individual
+        // room/apartment outlines, annotation frames, etc. drawn on the same layer.
+        // The true exterior envelope always encloses the largest area of any of them,
+        // so pick that one instead of just the first match found in the file.
+        return candidates.OrderByDescending(v => Math.Abs(SignedArea(v))).First();
     }
 
     private static List<(double x1, double y1, double x2, double y2)> OvkEdges(List<(double x, double y)> vertices)
@@ -219,12 +246,35 @@ public static class FloorProcessor
                 ws.Cell($"{col}{r}").Value = val;
         }
         ws.Cell($"L{r}").Value = Math.Round(totalPerimeter, 2);
+    }
+
+    /// <summary>Adds one floor's opening counts into a building-wide accumulator, summing counts for any (width, height) size already seen on an earlier floor instead of keeping them as separate entries.</summary>
+    private static void MergeOpeningGroups(
+        Dictionary<(double w, double h), Dictionary<string, int>> target,
+        Dictionary<(double w, double h), Dictionary<string, int>> source)
+    {
+        foreach (var (key, byDir) in source)
+        {
+            if (!target.TryGetValue(key, out var totals))
+            {
+                totals = DirOrder.ToDictionary(d => d, d => 0);
+                target[key] = totals;
+            }
+            foreach (var (dir, count) in byDir)
+                totals[dir] += count;
+        }
+    }
+
+    /// <summary>Writes the building-wide openings table (one row per distinct width×height size, summed across all floors) starting at <see cref="OpeningsTableStartRow"/>.</summary>
+    private static void WriteOpeningsTable(XLWorkbook wb, Dictionary<(double w, double h), Dictionary<string, int>> mergedGroups)
+    {
+        var ws = wb.Worksheet("Изчисления");
 
         int row = OpeningsTableStartRow;
         while (!ws.Cell($"B{row}").IsEmpty())
             row++;
 
-        foreach (var kvp in result.OpeningGroups)
+        foreach (var kvp in mergedGroups.OrderBy(g => g.Key.w).ThenBy(g => g.Key.h))
         {
             var (widthM, heightM) = kvp.Key;
             var byDir = kvp.Value;
@@ -267,13 +317,16 @@ public static class FloorProcessor
         using var wb = new XLWorkbook(templateExcelPath);
         int totalApartments = 0;
         double totalAreaM2 = 0.0;
+        var mergedOpenings = new Dictionary<(double w, double h), Dictionary<string, int>>();
         for (int i = 0; i < floors.Count; i++)
         {
             var result = ProcessFloor(floors[i], ovkLayer);
             WriteFloorToExcel(wb, floors[i], result, i);
+            MergeOpeningGroups(mergedOpenings, result.OpeningGroups);
             totalApartments += floors[i].ApartmentCount;
             totalAreaM2 += result.AreaM2;
         }
+        WriteOpeningsTable(wb, mergedOpenings);
         WriteApplianceBlock(wb, totalApartments, totalAreaM2);
         wb.SaveAs(outputExcelPath);
     }

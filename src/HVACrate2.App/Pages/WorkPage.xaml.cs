@@ -14,7 +14,6 @@ public partial class WorkPage : Page
 {
     private readonly ProjectRecord _project;
     private readonly ObservableCollection<FloorRowViewModel> _floors = new();
-    private string? _lastOutputPath;
 
     public WorkPage(ProjectRecord project)
     {
@@ -83,18 +82,9 @@ public partial class WorkPage : Page
         StatusText.Visibility = Visibility.Visible;
     }
 
-    private void ShowSuccess(string message)
-    {
-        StatusText.Text = message;
-        StatusText.Foreground = (Brush)FindResource("AccentBrush");
-        StatusText.Visibility = Visibility.Visible;
-    }
-
     private async void OnExtractClick(object sender, RoutedEventArgs e)
     {
-        DownloadButton.Visibility = Visibility.Collapsed;
         StatusText.Visibility = Visibility.Collapsed;
-        _lastOutputPath = null;
 
         var floorInputs = new List<FloorInput>();
         foreach (var row in _floors)
@@ -123,20 +113,12 @@ public partial class WorkPage : Page
             });
         }
 
-        string templatePath = Path.Combine(AppContext.BaseDirectory, "Assets", "Template.xlsx");
-        if (!File.Exists(templatePath))
-        {
-            ShowError("Excel template not found alongside the app (Assets/Template.xlsx).");
-            return;
-        }
-
-        string outputPath = Path.Combine(Path.GetTempPath(), $"HVACrate_{Guid.NewGuid():N}.xlsx");
-
+        List<FloorResult> results;
         ExtractButton.IsEnabled = false;
         ExtractSpinner.Visibility = Visibility.Visible;
         try
         {
-            await Task.Run(() => FloorProcessor.ProcessAndWriteFloors(floorInputs, templatePath, outputPath));
+            results = await Task.Run(() => FloorProcessor.ProcessFloors(floorInputs));
         }
         catch (Exception ex)
         {
@@ -149,26 +131,6 @@ public partial class WorkPage : Page
             ExtractButton.IsEnabled = true;
         }
 
-        _lastOutputPath = outputPath;
-        ShowSuccess($"Done — {floorInputs.Count} floor(s) written. Download the filled Excel file below.");
-        DownloadButton.Visibility = Visibility.Visible;
-    }
-
-    private void OnDownloadClick(object sender, RoutedEventArgs e)
-    {
-        if (_lastOutputPath is null || !File.Exists(_lastOutputPath))
-        {
-            ShowError("No filled file to download — run Extract & Fill Excel again.");
-            return;
-        }
-
-        var dialog = new SaveFileDialog
-        {
-            Title = "Save filled Excel file",
-            FileName = "Топлотехника V6.0.16.xlsx",
-            Filter = "Excel workbook (*.xlsx)|*.xlsx",
-        };
-        if (dialog.ShowDialog() == true)
-            File.Copy(_lastOutputPath, dialog.FileName, overwrite: true);
+        NavigationService?.Navigate(new PreviewPage(floorInputs, results));
     }
 }

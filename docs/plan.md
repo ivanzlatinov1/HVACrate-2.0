@@ -74,12 +74,14 @@
       17 rows match exactly (53/53 openings, 0 false positives, 0
       false negatives, 0 direction errors, 0 duplicates). See
       decisions.md, 2026-08-10.
-- [x] **Accepted, not a bug:** `samples/floor1.dxf` and
-      `samples/floor2.dxf` on disk no longer match the versions
-      originally validated/committed (found 2026-08-09 — see
-      decisions.md). User confirmed a 2-3 m² variance doesn't matter
-      and may come from their own manual reference calculations, not
-      extraction. Not being investigated further.
+- [x] **Resolved — real root cause found, not just accepted:**
+      `samples/floor1.dxf` drift (found 2026-08-09) traced to the
+      sample file itself having an incorrectly-drawn `OVK` layer. User
+      re-exported a corrected `floor1.dxf`; re-run reproduces the
+      original 2026-08-04 reference numbers exactly (Af=110.90m²,
+      С=9.70/И=12.50/Ю=9.70/З=12.50, n=6). Confirms the extraction code
+      was never at fault. `samples/floor2.dxf` drift not re-checked
+      (no corrected file supplied for it) — see decisions.md, 2026-08-10.
 - [x] **Final decision:** coordinate-unit auto-detection (centimeters
       vs millimeters) stays as-is. User confirmed the unit is a choice
       made when exporting the `.dxf` from AutoCAD — a wrong result from
@@ -118,22 +120,27 @@
       decisions.md, 2026-08-05, Session 4).
 - [x] Support repeating the process for multiple floors in one project
       — dynamic add/remove floor rows on the Work page
-- [x] "Extract & Fill Excel" button + "Download filled Excel" button —
-      runs the real `FloorProcessor` pipeline against the bundled
-      template into a scratch temp file, then lets the user Save As.
-      No separate template *picker* — the blank template is bundled
-      into the app's own output folder (`Assets/Template.xlsx`,
-      linked from `output/Топлотехника V6.0.16.xlsx`) rather than
-      chosen per run.
+- [x] "Extract & Preview" button — runs `FloorProcessor.ProcessFloors`
+      (compute only) and navigates to a review page; "Confirm & Write
+      Excel" + "Download filled Excel" moved there (see the 2D preview
+      item below). No separate template *picker* — the blank template
+      is bundled into the app's own output folder
+      (`Assets/Template.xlsx`, linked from
+      `output/Топлотехника V6.0.16.xlsx`) rather than chosen per run.
 - [x] Light/dark theme toggle (persistent, top-right of the window),
       gradient page backgrounds, themed inputs — not in the original
       Phase 3 scope, added per user request this session.
-- [ ] 2D preview of the recognized walls/windows (canvas) — for visual
-      verification that the correct elements are being read — **not
-      built yet**
-- [ ] Results table before writing — **not built**; current flow goes
-      straight from "Extract & Fill" to a success message + download,
-      no interim review step
+- [x] 2D preview of the recognized walls/windows (canvas) + results
+      table before writing — built together as one review step
+      (`PreviewPage` + `FloorPreviewControl`), inserted between
+      "Extract" and the Excel write. Per floor: a drawn OVK boundary +
+      opening markers (with a north arrow using the same bearing
+      convention as classification) alongside area/volume/perimeter/
+      corners/wall-lengths/openings. `FloorProcessor.ProcessAndWriteFloors`
+      split into `ProcessFloors` (compute) + `WriteFloorsToExcel`
+      (write pre-computed results) so the preview doesn't re-parse the
+      DXFs before writing. Verified live end-to-end (not just built) —
+      see decisions.md, 2026-08-10.
 - [x] Instructions page — two parts, each with a video + numbered
       written steps: (1) exporting the `.dxf` from AutoCAD (`OVK`
       layer, `WBLOCK`), (2) using HVACrate 2.0 to extract the Excel

@@ -1,6 +1,6 @@
 using System.Windows.Controls;
 
-namespace HVACrate2.App.Controls;
+namespace HVACrate2.App.Shared;
 
 public partial class LoadingSpinner : UserControl
 {

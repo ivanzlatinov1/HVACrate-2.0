@@ -1,9 +1,9 @@
-<Page x:Class="HVACrate2.App.Pages.InstructionsPage"
+<Page x:Class="HVACrate2.App.Instructions.InstructionsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-      xmlns:controls="clr-namespace:HVACrate2.App.Controls"
+      xmlns:controls="clr-namespace:HVACrate2.App.Instructions"
       mc:Ignorable="d"
       Title="Instructions"
       Background="{DynamicResource PageBackgroundBrush}">

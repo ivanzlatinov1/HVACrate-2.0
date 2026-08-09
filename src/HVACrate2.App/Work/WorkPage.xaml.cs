@@ -3,12 +3,13 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using HVACrate2.App.ViewModels;
+using HVACrate2.App.Preview;
+using HVACrate2.App.Projects;
 using HVACrate2.Core;
 using HVACrate2.Core.Models;
 using Microsoft.Win32;
 
-namespace HVACrate2.App.Pages;
+namespace HVACrate2.App.Work;
 
 public partial class WorkPage : Page
 {

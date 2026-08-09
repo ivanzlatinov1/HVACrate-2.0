@@ -1,9 +1,10 @@
-<Page x:Class="HVACrate2.App.Pages.PreviewPage"
+<Page x:Class="HVACrate2.App.Preview.PreviewPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-      xmlns:controls="clr-namespace:HVACrate2.App.Controls"
+      xmlns:local="clr-namespace:HVACrate2.App.Preview"
+      xmlns:shared="clr-namespace:HVACrate2.App.Shared"
       mc:Ignorable="d"
       Title="Preview"
       Background="{DynamicResource PageBackgroundBrush}">
@@ -35,7 +36,7 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
 
-                                <controls:FloorPreviewControl Grid.Column="0"
+                                <local:FloorPreviewControl Grid.Column="0"
                                     Result="{Binding Result}" NorthDeg="{Binding NorthDeg}"
                                     Margin="0,0,20,0" VerticalAlignment="Top" />
 
@@ -107,7 +108,7 @@
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="ConfirmButton" Content="Confirm &amp; Write Excel" Style="{StaticResource NavButtonStyle}"
                         Padding="20,12" Click="OnConfirmClick" Margin="0,0,12,0" />
-                <controls:LoadingSpinner x:Name="ConfirmSpinner" VerticalAlignment="Center"
+                <shared:LoadingSpinner x:Name="ConfirmSpinner" VerticalAlignment="Center"
                                           Margin="0,0,12,0" Visibility="Collapsed" />
                 <Button x:Name="DownloadButton" Content="Download filled Excel" Style="{StaticResource NavButtonStyle}"
                         Padding="20,12" Click="OnDownloadClick" Visibility="Collapsed" />

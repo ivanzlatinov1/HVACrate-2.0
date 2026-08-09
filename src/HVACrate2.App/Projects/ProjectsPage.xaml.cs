@@ -1,8 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
-using HVACrate2.App.ViewModels;
+using HVACrate2.App.Start;
+using HVACrate2.App.Work;
 
-namespace HVACrate2.App.Pages;
+namespace HVACrate2.App.Projects;
 
 public partial class ProjectsPage : Page
 {

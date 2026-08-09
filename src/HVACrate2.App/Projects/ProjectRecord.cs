@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace HVACrate2.App.ViewModels;
+namespace HVACrate2.App.Projects;
 
 public sealed class ProjectRecord : INotifyPropertyChanged
 {

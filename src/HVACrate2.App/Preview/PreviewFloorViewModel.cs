@@ -1,6 +1,6 @@
 using HVACrate2.Core.Models;
 
-namespace HVACrate2.App.ViewModels;
+namespace HVACrate2.App.Preview;
 
 /// <summary>Read-only display wrapper around one floor's already-computed <see cref="FloorResult"/>, for the review page — no logic, just formatting.</summary>
 public sealed class PreviewFloorViewModel

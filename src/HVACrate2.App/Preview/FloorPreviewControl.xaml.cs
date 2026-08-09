@@ -4,7 +4,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using HVACrate2.Core.Models;
 
-namespace HVACrate2.App.Controls;
+namespace HVACrate2.App.Preview;
 
 /// <summary>
 /// Draws a floor's extracted OVK boundary and opening positions on a 2D canvas, for visual review

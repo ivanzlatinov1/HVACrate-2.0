@@ -1,5 +1,6 @@
 using System.Windows;
-using HVACrate2.App.Pages;
+using HVACrate2.App.Shared;
+using HVACrate2.App.Start;
 
 namespace HVACrate2.App;
 

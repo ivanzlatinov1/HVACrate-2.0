@@ -1,10 +1,10 @@
-<Page x:Class="HVACrate2.App.Pages.WorkPage"
+<Page x:Class="HVACrate2.App.Work.WorkPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-      xmlns:controls="clr-namespace:HVACrate2.App.Controls"
-      xmlns:vm="clr-namespace:HVACrate2.App.ViewModels"
+      xmlns:local="clr-namespace:HVACrate2.App.Work"
+      xmlns:shared="clr-namespace:HVACrate2.App.Shared"
       mc:Ignorable="d"
       Title="Work"
       Background="{DynamicResource PageBackgroundBrush}">
@@ -38,7 +38,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
-                                    <controls:CompassControl Grid.Column="0"
+                                    <local:CompassControl Grid.Column="0"
                                         AngleDegrees="{Binding CompassAngle}"
                                         VerticalAlignment="Top" Margin="0,0,20,0" />
 
@@ -87,7 +87,7 @@
                                             <TextBlock Text="Up direction" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource TextPrimaryBrush}" />
                                             <ComboBox Grid.Column="1" Width="160" HorizontalAlignment="Left"
-                                                      ItemsSource="{Binding Source={x:Static vm:CompassDirectionOption.All}}"
+                                                      ItemsSource="{Binding Source={x:Static local:CompassDirectionOption.All}}"
                                                       SelectedItem="{Binding SelectedDirection}" />
                                         </Grid>
                                     </StackPanel>
@@ -113,7 +113,7 @@
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="ExtractButton" Content="Extract &amp; Preview" Style="{StaticResource NavButtonStyle}"
                         Padding="20,12" Click="OnExtractClick" Margin="0,0,12,0" />
-                <controls:LoadingSpinner x:Name="ExtractSpinner" VerticalAlignment="Center"
+                <shared:LoadingSpinner x:Name="ExtractSpinner" VerticalAlignment="Center"
                                           Margin="0,0,12,0" Visibility="Collapsed" />
             </StackPanel>
         </StackPanel>

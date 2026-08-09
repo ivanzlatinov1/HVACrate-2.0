@@ -1004,3 +1004,71 @@ against further.
 substring match): **final decision — stays as-is.** User confirmed every
 real project's wall-layer naming convention is English; no need to
 support non-English layer names.
+
+---
+
+## 2026-08-09 — Session 11: 2D preview + results table before the Excel
+write; `floor1.dxf` sample drift root-caused and fixed (bad `OVK` layer
+in the file, not a code bug)
+
+**2D preview / results table shipped.** Closed the last two open Phase 3
+items (`plan.md`) as one combined review step, per explicit user
+request: `FloorProcessor.ProcessAndWriteFloors` split into
+`ProcessFloors` (compute per-floor `FloorResult`s, no Excel) and
+`WriteFloorsToExcel` (write already-computed results — avoids
+re-parsing every DXF a second time). `FloorResult` now also carries
+`OvkVerticesM` and per-opening `Openings` (with world position), both
+previously computed and discarded inside `ProcessFloor`. New
+`Controls/FloorPreviewControl` (a `Canvas`-based `UserControl`,
+following the existing `CompassControl`/`LoadingSpinner` pattern) draws
+the OVK boundary, opening markers (tooltipped with size/direction), and
+a north arrow — the arrow's direction is derived from the exact same
+bearing formula `FloorProcessor.BearingToDirection` uses
+(`mathAngle = 90 - northDeg`), not a separately-guessed rotation, so it
+can never visually disagree with the direction letters in the table
+next to it. New `Pages/PreviewPage` shows this plus a results table
+(area/volume/perimeter/corners/wall-lengths/openings) per floor, with
+"Confirm & Write Excel" (calls the new `WriteFloorsToExcel`) and
+"Download" (moved from the Work page). `WorkPage`'s "Extract & Fill
+Excel" became "Extract & Preview", navigating to `PreviewPage` instead
+of writing directly. `PreviewPage`'s "Back" uses `NavigationService.GoBack()`
+rather than constructing a fresh `WorkPage` — a deliberate deviation
+from every other page's "always construct fresh" back-navigation
+convention, specifically because `WorkPage`'s `_floors` are real,
+easily-lost per-instance state (DXF paths, heights, apartment counts)
+and users are now much more likely to need to go back mid-flow (e.g.
+to fix a value after seeing the preview) than before.
+
+**Verified live, not just built** — per project convention for UI
+changes: launched the real `.exe`, drove it with `System.Windows.Automation`
+(including scripting the native `OpenFileDialog` via its `HWND`, found
+through `EnumWindows` since `AutomationElement.FromHandle` needed the
+real handle rather than a name match) through the full path: create
+project → choose `floor1.dxf` → fill height/apartments → Extract &
+Preview → confirmed the preview showed the exact known-correct values
+→ Confirm & Write Excel → Download appeared → Back preserved the
+already-entered floor data. No crashes.
+
+**`samples/floor1.dxf` drift (open since 2026-08-09) root-caused and
+fixed.** User identified the actual cause: the previously-uploaded
+`floor1.dxf` had an incorrectly-drawn `OVK` layer — not a code issue.
+User re-exported a corrected file. Re-running the full pipeline against
+it reproduces the **original 2026-08-04 validated reference exactly**:
+Af=110.90m² (was 112.78m²), С=9.70/И=12.50/Ю=9.70/З=12.50 (was
+С=9.70/И=11.61/Ю=9.70/З=11.65), n=6 (was 4). Opening extraction was
+unaffected by the drift either way (same 6 rows, same counts, both
+before and after). This confirms the extraction/classification code
+was never the source of the discrepancy — closes the item for real,
+superseding the earlier "accepted, 2-3 m² doesn't matter" framing.
+`samples/floor2.dxf`'s drift (flagged in the same original 2026-08-09
+entry) was not re-checked — no corrected file was supplied for it.
+
+**Full re-validation after both changes:** floor1-4 merged openings
+table still matches all 17 reference rows exactly (53/53 openings, 0
+mismatches — floor1's opening counts were unaffected by its OVK-layer
+fix, only its area/wall-length/corner numbers changed). `example.dxf`
+and floor2-4 unchanged. Full solution build (`dotnet build` at the
+solution root, all 3 projects including the `HVACrate2.Core.Tests`
+scaffold) clean, one pre-existing unrelated placeholder-test warning
+(`TUnitAssertions0005` on the scaffold `Tests.cs`, predates this
+session, not touched).

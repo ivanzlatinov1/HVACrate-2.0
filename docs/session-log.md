@@ -558,3 +558,60 @@ possible.
 - 2D preview / results-review table before the Excel write — still not
   built.
 - Phase 4 (packaging/distribution) — still not started.
+
+---
+
+## 2026-08-09 — Session 11 (branch `feature/preview-results-before-excel`)
+
+**Context:** closed the sample-drift, coordinate-unit, and
+wall-layer-naming items by explicit user decision (drift accepted as
+noise, the other two confirmed as user-side export concerns, not code
+issues) — then, mid-session, the user identified and fixed the actual
+cause of the `floor1.dxf` drift (a bad `OVK` layer in that specific
+file) and asked for it to be re-verified now that it's fixed. Also
+built the last two open Phase 3 items: a 2D preview and a results
+table before the Excel write.
+
+**Done:**
+
+- Entered plan mode for the 2D preview / results table feature (a
+  genuine multi-file UI feature) before writing code; plan approved
+  by the user before implementation started.
+- `FloorProcessor.ProcessAndWriteFloors` split into `ProcessFloors`
+  (compute, no Excel) and `WriteFloorsToExcel` (write already-computed
+  results) — verified byte-identical output to the pre-refactor
+  baseline across floor1-4 and `example.dxf` before building anything
+  on top of it.
+- `FloorResult`/`Opening` extended with `OvkVerticesM` and per-opening
+  world position — both were already computed internally and
+  discarded; no extraction/classification logic changed.
+- New `FloorPreviewControl` (2D canvas: OVK boundary, opening markers,
+  a north arrow computed from the same bearing formula the classifier
+  itself uses) and `PreviewPage` (the control plus a results table),
+  inserted between "Extract" and the Excel write. `WorkPage`'s button
+  renamed "Extract & Preview"; the actual write + download moved to
+  the preview page's "Confirm & Write Excel" step.
+- Verified live against the real `.exe`, not just built: scripted the
+  full user flow with `System.Windows.Automation` (project creation,
+  the native DXF file-picker dialog via its window handle, form
+  fields, Extract, Preview, Confirm & Write, Download, Back) and
+  confirmed the preview showed the exact known-correct extracted
+  values, the write succeeded, and Back preserved the user's
+  already-entered floor data instead of resetting it.
+- Committed the preview feature, then re-validated `floor1.dxf` after
+  the user supplied a corrected copy (fixed `OVK` layer): the file now
+  reproduces the original 2026-08-04 reference exactly (Af=110.90m²,
+  С=9.70/И=12.50/Ю=9.70/З=12.50, n=6) — confirms the earlier "drift"
+  was a bad sample file, not a code bug. Full solution build
+  (including the test project scaffold) clean.
+
+**Open for the next session:**
+
+- `samples/floor2.dxf`'s drift (flagged alongside floor1's originally)
+  was not re-checked — no corrected file supplied for it this session.
+- Coordinate-unit auto-detection and wall-layer-name detection remain
+  closed per explicit user decision (not being revisited).
+- Phase 4 (packaging/distribution) — still not started.
+- `tests/HVACrate2.Core.Tests` is still an empty scaffold (one
+  placeholder `Assert.That(true)` test) — pre-existing, not addressed
+  this session.

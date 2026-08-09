@@ -80,8 +80,9 @@
       re-exported a corrected `floor1.dxf`; re-run reproduces the
       original 2026-08-04 reference numbers exactly (Af=110.90m²,
       С=9.70/И=12.50/Ю=9.70/З=12.50, n=6). Confirms the extraction code
-      was never at fault. `samples/floor2.dxf` drift not re-checked
-      (no corrected file supplied for it) — see decisions.md, 2026-08-10.
+      was never at fault. `samples/floor2.dxf`'s current on-disk copy
+      confirmed by the user to be the correct file — no fix needed,
+      its drift note is closed too. See decisions.md, 2026-08-10.
 - [x] **Final decision:** coordinate-unit auto-detection (centimeters
       vs millimeters) stays as-is. User confirmed the unit is a choice
       made when exporting the `.dxf` from AutoCAD — a wrong result from

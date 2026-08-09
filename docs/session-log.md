@@ -605,10 +605,12 @@ table before the Excel write.
   was a bad sample file, not a code bug. Full solution build
   (including the test project scaffold) clean.
 
+- User confirmed `samples/floor2.dxf`'s current on-disk copy is the
+  correct file (no export bug) — both floor1's and floor2's drift
+  items are now closed.
+
 **Open for the next session:**
 
-- `samples/floor2.dxf`'s drift (flagged alongside floor1's originally)
-  was not re-checked — no corrected file supplied for it this session.
 - Coordinate-unit auto-detection and wall-layer-name detection remain
   closed per explicit user decision (not being revisited).
 - Phase 4 (packaging/distribution) — still not started.

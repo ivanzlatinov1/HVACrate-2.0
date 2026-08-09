@@ -1061,7 +1061,9 @@ before and after). This confirms the extraction/classification code
 was never the source of the discrepancy — closes the item for real,
 superseding the earlier "accepted, 2-3 m² doesn't matter" framing.
 `samples/floor2.dxf`'s drift (flagged in the same original 2026-08-09
-entry) was not re-checked — no corrected file was supplied for it.
+entry) — user confirmed the current on-disk file is the correct one
+(no export bug there); nothing to fix. Both files' drift items are now
+closed.
 
 **Full re-validation after both changes:** floor1-4 merged openings
 table still matches all 17 reference rows exactly (53/53 openings, 0

@@ -983,3 +983,24 @@ from the two rejected approaches.
 
 **Shipped:** branch `fix/exterior-opening-classification-host-wall-topology`,
 merged to `main`.
+
+---
+
+## 2026-08-09 — Three remaining open items closed by explicit user decision
+
+**Sample-file drift** (`floor1.dxf`/`floor2.dxf` no longer matching their
+originally-validated versions): user confirmed a 2-3 m² variance doesn't
+matter and may originate from their own manual reference calculations,
+not from extraction. Not being investigated further.
+
+**Coordinate-unit auto-detection** (cm vs mm): **final decision — stays
+as the plausibility-threshold heuristic it is.** User confirmed the
+coordinate unit is a choice made by the user when exporting the `.dxf`
+from AutoCAD — if a third, untested convention produces a wrong result,
+that's a user-side export issue, not something the app needs to guard
+against further.
+
+**Wall-layer detection** (`WallTopology.IsWallLayer`, English "wall"
+substring match): **final decision — stays as-is.** User confirmed every
+real project's wall-layer naming convention is English; no need to
+support non-English layer names.

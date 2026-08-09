@@ -74,24 +74,22 @@
       17 rows match exactly (53/53 openings, 0 false positives, 0
       false negatives, 0 direction errors, 0 duplicates). See
       decisions.md, 2026-08-10.
-- [ ] **Open:** `samples/floor1.dxf` and `samples/floor2.dxf` on disk
-      no longer match the versions that were originally validated and
-      committed (found 2026-08-09 — see decisions.md). Since
-      `samples/` is gitignored, there is no history for the current
-      files. Not blocking, but means historical reference numbers in
-      this file and decisions.md no longer reproduce from the current
-      sample files as-is.
-- [ ] **Open:** coordinate-unit auto-detection (centimeters vs
-      millimeters, see decisions.md 2026-08-09) is a plausibility
-      heuristic (implausible-floor-area threshold), validated against
-      exactly the two real conventions seen so far. Untested against a
-      third convention (e.g. inches) or a genuinely oversized/undersized
-      real floor that could fool the threshold either way.
-- [ ] **Open:** wall-layer detection for the topology classifier
-      (`WallTopology.IsWallLayer`) matches any layer whose name
-      contains "wall" (case-insensitive, English). Works for every
-      current sample (`_A [walls]`, `STR- Exterior/Interior walls`);
-      unverified against a non-English wall-layer naming convention.
+- [x] **Accepted, not a bug:** `samples/floor1.dxf` and
+      `samples/floor2.dxf` on disk no longer match the versions
+      originally validated/committed (found 2026-08-09 — see
+      decisions.md). User confirmed a 2-3 m² variance doesn't matter
+      and may come from their own manual reference calculations, not
+      extraction. Not being investigated further.
+- [x] **Final decision:** coordinate-unit auto-detection (centimeters
+      vs millimeters) stays as-is. User confirmed the unit is a choice
+      made when exporting the `.dxf` from AutoCAD — a wrong result from
+      a third, untested convention is a user-side export issue, not
+      something the app needs to guard against further.
+- [x] **Final decision:** wall-layer detection
+      (`WallTopology.IsWallLayer`, English "wall" substring match)
+      stays as-is. User confirmed every wall-layer naming convention in
+      real projects is English — no need to support non-English layer
+      names.
 - [ ] **Flagged, not a code bug:** a 0.4m×2.46m window in
       `floor2.dxf`/`floor3.dxf` and a 90×210cm door height in
       `floor3.dxf` were both reported as possibly wrong. Investigated

@@ -172,11 +172,9 @@ public static class FloorProcessor
     /// a path but it matched no OVK edge index (should not occur in practice).
     /// </summary>
     private static string AssignOvkDirection(
-        List<List<(double x, double y)>> paths, WallTopology.WallGraph graph,
-        (double x, double y) markerPos,
+        int? edgeIdx, (double x, double y) markerPos,
         List<(double x1, double y1, double x2, double y2)> ovkEdges, double northDeg, double ccwSign)
     {
-        int? edgeIdx = WallTopology.AssignOvkEdgeIndex(paths, graph);
         if (edgeIdx is null)
             return NearestOvkEdgeDirection(markerPos.x, markerPos.y, ovkEdges, northDeg, ccwSign);
 
@@ -188,6 +186,19 @@ public static class FloorProcessor
     /// Extracts openings whose host wall — determined from wall geometry, not marker position —
     /// is part of the OVK perimeter. See <see cref="WallTopology"/> for why marker-to-OVK distance
     /// cannot make this call reliably, and docs/decisions.md for the investigation behind it.
+    /// Nested-marker convention (floor1-4's Wall_N_2): the host wall's OWN block is frequently just
+    /// the short pier between two openings, not the wall that actually reaches OVK — the exporter
+    /// splits one physical exterior wall into many such blocks with no explicit link between them.
+    /// <see cref="WallTopology.BuildWallRun"/> reconstructs that physical wall for the exterior/
+    /// interior decision only (<see cref="WallTopology.WallRun.OwnsGenuineOvkSegment"/>) — once a
+    /// run is confirmed exterior, path-finding and direction use only the opening's own host block
+    /// (<see cref="WallTopology.FindHostWallNodes"/>), not the run's other blocks: that function's
+    /// own collinear graph trace already reaches the rest of the run when a real path exists, and
+    /// scoping the trace's starting points to the opening's own block is what keeps the vote from
+    /// being diluted by nodes several rooms away (see docs/decisions.md for the investigation).
+    /// Top-level/Archicad-style markers are unaffected by any of this — no per-wall-block splitting
+    /// convention was found for that case, so they keep using
+    /// <see cref="WallTopology.HostWallOwnsOvkNode"/> on the single companion-matched wall directly.
     /// </summary>
     private static List<Opening> ExtractOpeningsTouchingOvk(
         DxfDocument doc, List<(double x1, double y1, double x2, double y2)> ovkEdges,
@@ -195,6 +206,7 @@ public static class FloorProcessor
     {
         var graph = WallTopology.BuildWallGraph(doc, coordDivisor);
         WallTopology.MarkOvkNodes(graph, ovkEdges);
+        var blockIndex = WallTopology.BuildWallBlockIndex(doc, coordDivisor);
 
         var topLevelMarkers = doc.Entities.Inserts
             .Where(i => i.Block.Name.StartsWith("W Marker") || i.Block.Name.StartsWith("D Marker"))
@@ -212,12 +224,22 @@ public static class FloorProcessor
             if (!double.TryParse(wStr.Replace(",", "."), out double widthCm)) continue;
             if (!double.TryParse(hStr.Replace(",", "."), out double heightCm)) continue;
 
+            if (parent is not null)
+            {
+                var run = WallTopology.BuildWallRun(blockIndex, graph, ovkEdges, parent.Name);
+                if (!run.OwnsGenuineOvkSegment) continue;
+            }
+
             var hostNodes = WallTopology.FindHostWallNodes(doc, graph, ins, parent);
+            if (parent is null && !WallTopology.HostWallOwnsOvkNode(hostNodes, graph)) continue;
+
             var paths = WallTopology.FindExteriorOvkPaths(hostNodes, graph);
             if (paths.Count == 0) continue;
 
+            int? edgeIdx = WallTopology.AssignOvkEdgeIndex(paths, graph);
+
             var markerPos = (ins.Position.X / coordDivisor, ins.Position.Y / coordDivisor);
-            string dir = AssignOvkDirection(paths, graph, markerPos, ovkEdges, northDeg, ccwSign);
+            string dir = AssignOvkDirection(edgeIdx, markerPos, ovkEdges, northDeg, ccwSign);
 
             openings.Add(new Opening
             {

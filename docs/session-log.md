@@ -401,3 +401,107 @@ and `feature/extract-loading-spinner`, both merged to `main`)
 - Phase 4 (packaging/distribution) not started.
 - Everything else carried over (see decisions.md, 2026-08-07 entries)
   is still open.
+
+---
+
+## 2026-08-09 — Session 9 (branch `fix/ovk-logic`, merged to `main`)
+
+**Context:** user supplied a new real sample, `samples/example.dxf`
+(an Archicad export), and reported the app produced wrong results
+against it — tiny/wrong area, only 2 of 8 wall directions populated,
+zero windows/doors. This turned into the OVK edge-case testing deferred
+since Session 3/4: this file is genuinely non-rectangular and needed a
+non-zero north angle (45°), and its marker-placement convention is
+different enough from floor1-4 that it broke assumptions baked into
+Phase 1's original opening-extraction logic.
+
+**Done:**
+
+- **OVK boundary selection fixed:** `example.dxf` reuses the `OVK`
+  layer for 55+ polylines (room outlines, annotation frames), not just
+  the building envelope. `OvkVertices` picked the first one found
+  (`FirstOrDefault`); now picks the one with the largest enclosed area,
+  since the true envelope dominates any room/annotation polygon by a
+  wide margin (47x in this file). No-op for floor1-4 (always had
+  exactly one OVK-layer polyline).
+- **Cross-floor opening rows merged instead of duplicated,** per user
+  request: the openings table previously grew a fresh set of rows per
+  floor even when the same window/door size repeated across floors.
+  `ProcessAndWriteFloors` now sums counts into one table before writing.
+- **Opening exterior/interior classification redesigned from scratch.**
+  The original approach (marker within a fixed distance of the OVK
+  boundary) could not work: `example.dxf`'s markers sit 1.2-2.5m from
+  OVK (an Archicad annotation-leader convention) while floor1-4's sit
+  ~0.25m out, and floor1's own genuinely-interior doors span a
+  continuous 1.15-4.44m with no gap anywhere a threshold could exploit
+  — proven by directly measuring real marker-to-boundary distances
+  before writing any code. Two more approaches (network-wide hop
+  search, marker-position-based direction with a raised tolerance)
+  were tried and rejected with concrete before/after evidence at each
+  step. Landed on `WallTopology.cs`: determine each opening's actual
+  host wall from geometry (structural block-nesting for floor1-4;
+  real window/door body object located by proximity for Archicad-style
+  files, verified to land within 0.01m of true wall vertices), then
+  classify by tracing only near-straight wall continuations toward
+  OVK — a real corner (~90°) stops the trace, which is what correctly
+  excludes an interior partition that merely touches its host exterior
+  wall.
+- **Coordinate scale auto-detected (cm vs mm).** `example.dxf`'s raw
+  coordinates turned out to be millimeters, not centimeters like every
+  other sample — confirmed by the user's real reference numbers being
+  off by exactly 100x (area) and 10x (length). `$INSUNITS` cannot tell
+  the two conventions apart (checked directly: both declare the
+  identical value). `DetectCoordinateDivisor` tries centimeters first,
+  falls back to millimeters only if that yields an implausible floor
+  area.
+- **Opening direction assignment fixed for the corner case,** after two
+  more rejected attempts each with real regressions found and reverted
+  (direction from the OVK touch point directly: relocated the same
+  ambiguity to a shared corner vertex; direction from the traced wall
+  run's own edge: broken by jamb-tick segments coincidentally aligning
+  with the wrong facade). Landed on reusing the tight-tolerance
+  OVK-edge match already computed per wall-graph node, chosen by
+  plurality vote across every traced path (not summed path length,
+  which a single long spurious detour was found to dominate).
+- **Validated against a real reference table** the user supplied
+  (window/door counts by size and direction, all 4 floors of a real
+  project merged): 16 of 16 rows match exactly, including the
+  previously-wrong corner case, with no regressions.
+- **Two flagged discrepancies investigated to concrete conclusions**
+  (not left as "probably fine," per explicit instruction): a
+  0.4×2.46m window and a 90×210cm door height. Both checked
+  exhaustively — real paired body-object geometry, duplicate/reference
+  counts, hidden/disabled flags, alternate attributes — and found
+  fully consistent with the DXF's own data in every case. If either is
+  still wrong, the discrepancy is in the source drawing, not in
+  extraction.
+- **Sample file drift discovered as a side effect of debugging:**
+  `samples/floor1.dxf` and `samples/floor2.dxf` on disk no longer
+  match the versions last committed (before `samples/` was gitignored)
+  and originally validated — confirmed by re-running against the
+  committed byte-for-byte versions, which still reproduce every
+  historical number exactly. Not caused by this session's changes;
+  flagged as open since it affects reproducibility of old reference
+  numbers.
+- Extensive back-and-forth with the user rejecting several proposed
+  fixes at each stage (tolerance tuning, network-wide search, several
+  direction-assignment heuristics) before landing on the wall-topology
+  design — each rejection is logged in decisions.md with the specific
+  before/after evidence, not just the final approach, since the ruled-
+  out paths are exactly what the next session needs to avoid re-trying.
+
+**Open for the next session:**
+
+- Exterior/interior classification is still imprecise for some small
+  doors: `floor2.dxf` and `floor3.dxf` (same wall-block layout)
+  classify their w=90cm doors differently from each other, and neither
+  matches the reference table. Root cause not found.
+- Coordinate-unit auto-detection and wall-layer-name detection
+  (`WallTopology.IsWallLayer`) are both heuristics validated against
+  only the conventions seen so far — see plan.md for specifics.
+- The sample-file-drift finding above is unresolved (no fix attempted;
+  flagged for the user's awareness).
+- 2D preview of recognized walls/windows, and a results-review table
+  before the final Excel write — still not built (carried over from
+  every prior session).
+- Phase 4 (packaging/distribution) — still not started.

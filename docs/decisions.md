@@ -598,3 +598,297 @@ dialogs on the real desktop (not a sandbox) is more failure-prone and
 was judged not worth the added risk for this change — confidence
 instead comes from reusing the already-proven `CompassControl`
 animation mechanism.
+
+---
+
+## 2026-08-09 — OVK boundary picked by largest area, not first match
+
+**Decision:** `OvkVertices` now picks, among every `LWPOLYLINE` on the
+OVK layer, the one enclosing the largest area — not the first one
+found in the file (`FirstOrDefault`).
+
+**Reason:** the user supplied a new real sample, `samples/example.dxf`
+(Archicad export), which produced wildly wrong results (tiny area,
+only 2 of 8 wall directions populated, zero windows/doors). Traced the
+cause: this file reuses the `OVK` layer for far more than the building
+boundary — 55 separate polylines in model space alone, one per
+apartment/room, plus assorted annotation frames — matching
+decisions.md's 2026-08-04 concern about the layer being used loosely,
+now confirmed in a real file. `FirstOrDefault` grabbed an arbitrary
+small room polygon instead of the real 20-vertex envelope. The real
+envelope's area (267,038,861 raw units²) was 47x larger than the next
+biggest candidate (a room, 5,625,000) — not a close call, so
+"largest area wins" is safe and unambiguous. This is a no-op for
+floor1-4, which only ever had one OVK-layer polyline each.
+
+**Also found and fixed the vertex-closing assumption:** `OvkVertices`
+assumed the polyline's vertex list already ends with a duplicate of
+the first vertex (true for floor1-4). `example.dxf`'s real envelope
+closes via the LWPOLYLINE's own "closed" flag instead, with no
+duplicate vertex. `OvkVertices` now normalizes both conventions to the
+same duplicate-closing shape before returning, so every other function
+in the file (which all assume that shape) doesn't need to care which
+convention a given file used.
+
+---
+
+## 2026-08-09 — Cross-floor opening rows merged instead of duplicated
+
+**Decision:** `ProcessAndWriteFloors` now accumulates every floor's
+opening counts into one building-wide dictionary and writes the
+openings table once, after the per-floor loop, instead of each floor
+appending its own fresh rows to the table.
+
+**Reason:** explicit user request — the openings table (`WriteToExcel`,
+row 57+) previously grew by whatever each floor's `WriteFloorToExcel`
+call found "next free," so the same window/door size recurring across
+floors (very common — most floors in a building share window types)
+produced multiple rows with the same width×height instead of one
+summed row. `MergeOpeningGroups` sums per-direction counts for any
+`(width, height)` key already seen on an earlier floor; `WriteOpeningsTable`
+is the only thing that writes to the opening rows now.
+
+---
+
+## 2026-08-09 — Opening exterior/interior classification: distance-based
+approach abandoned; wall-topology tracing adopted
+
+**Context:** `example.dxf` (see above) also produced zero windows/doors
+even after the OVK-selection fix, because `ExtractOpeningsTouchingOvk`
+required a marker to be within a fixed tolerance (0.5m) of the OVK
+boundary to count as exterior — and this file's markers sit 1.2-2.5m
+out (an Archicad annotation-leader convention: the marker is a label
+with a leader line, not glued to the wall).
+
+**What was tried and rejected, in order, each with real-data evidence:**
+
+1. **Raise the tolerance** (tried 3.0m). Fixed `example.dxf`, but
+   `floor1.dxf`'s doors sit at a continuous spread of distances
+   (1.15m to 4.44m) with *no gap anywhere* between "close" and "far" —
+   any tolerance that admits `example.dxf`'s exterior openings also
+   admits several of floor1's genuinely interior doors. There is no
+   single distance threshold that works for both files' drafting
+   conventions.
+2. **Network-wide hop-bounded BFS** from the opening's host wall to any
+   OVK-coincident node. Rejected: in a small, tightly-packed floor
+   plan, interior partitions physically touch the exterior wall at a
+   T-junction within a couple of hops, so this credits an interior
+   partition with the exterior wall it merely joins, not one it's part
+   of.
+3. **Collinear-run tracing** (adopted, this entry): from the opening's
+   host wall, follow only near-straight continuations (max ~35° turn
+   per step) toward OVK. A real corner (~90°) stops the trace, so an
+   interior partition meeting its host exterior wall at a corner is
+   correctly excluded, while the small real-world kinks a wall run has
+   at drafting/party-wall seams (~15-20° in validated data) are still
+   tolerated.
+
+**Host wall determination** (`WallTopology.FindHostWallNodes`) differs
+by DXF convention, both confirmed by direct investigation (not
+assumed):
+
+- **Nested markers** (floor1-4's `Wall_N_2` convention, per the
+  2026-08-04 entry): the host wall is a structural fact — whichever
+  block directly contains the marker. No search needed.
+- **Top-level/annotation-only markers** (Archicad): no structural
+  host-wall link exists anywhere in the DXF for this convention —
+  checked exhaustively (XDATA, extension dictionaries, reactor
+  pointers, owner handles, HATCH boundary-loop counts) and found
+  nothing. Instead, the *real* window/door body object (a separate
+  INSERT Archicad places next to the annotation marker, e.g.
+  `Variable Window 27_5`, distinct from the `W Marker`/`D Marker`
+  label) is found by proximity and its own geometry — transformed
+  through its own INSERT (translation, rotation, mirror scale, *and*
+  the block's own base point, which floor1-4's `Wall_N_2` blocks need
+  and Archicad's companion objects don't, since their base point is
+  `(0,0,0)`) — is matched to the wall network at drafting precision
+  (≤0.15m). Verified concretely: this transformed geometry lands
+  exactly (0.001-0.01m) on real wall-graph vertices.
+
+**A wall graph** (`WallTopology.BuildWallGraph`) is built once per
+floor from every wall-layer `LINE`/`Polyline2D` in the document,
+covering both conventions with the same code: entities already at top
+level (Archicad's flat `STR- Exterior/Interior walls` layers) are
+added as-is; entities nested one level inside a per-wall block
+(floor1-4's convention) are transformed through that block's own
+INSERT first. A top-level wall segment is just the identity-transform
+case of the same logic, not a separate path.
+
+**Validated:** `example.dxf` now produces a full openings table across
+all 8 directions (previously zero); floor1-4's previously-correct
+values are unchanged (re-verified against the merged 4-floor reference
+table supplied by the user — see the two entries below for the
+remaining discrepancies and how each was investigated).
+
+---
+
+## 2026-08-09 — Coordinate scale auto-detected (centimeters vs
+millimeters); `$INSUNITS` confirmed unreliable
+
+**Decision:** `FloorProcessor.DetectCoordinateDivisor` tries
+centimeters first (divide raw units by 100 — the convention every
+sample used until now) and falls back to millimeters (divide by 1000)
+only if that produces an implausible floor area (>20,000 m²).
+
+**Reason:** user reported `example.dxf`'s computed area (26,703.89 m²)
+and total wall perimeter (888.41m) were both unrealistic, and gave the
+correct values (267.03 m², 88.84m) — exactly a 100x and 10x factor
+respectively, which is exactly what a cm-vs-mm mixup produces (area
+scales as the square of a linear-unit error). Checked `$INSUNITS` in
+both `example.dxf` and `floor1.dxf` directly: **both declare the
+identical value** (6 = meters), despite needing different divisors —
+confirming this header cannot be trusted to distinguish the two real
+conventions found so far. `DetectCoordinateDivisor` computes the OVK
+area at the default centimeter divisor and only switches conventions
+if that area is nonsensical for a single floor plate; the two
+conventions are never close enough in the resulting area to produce a
+false switch (100x apart, not a few percent).
+
+**Also fixed:** `WallTopology`'s `CompanionSearchRadiusCm` constant
+(6.0, i.e. 600cm) was being compared directly against raw,
+un-converted DXF distances — silently assuming the centimeter
+convention regardless of which one was actually detected. Renamed to
+`CompanionSearchRadiusM` (6.0) and scaled by the detected divisor at
+the comparison site.
+
+---
+
+## 2026-08-09 — Opening direction: assigned from the OVK edge the host
+wall reaches, not from the marker's raw position
+
+**Context:** direction was computed by a fresh nearest-OVK-edge search
+from the marker's own position. This is unreliable near a building
+corner, where a marker can sit close to two differently-facing edges —
+confirmed on a real case (`floor1.dxf`, `Wall_44_2`, a 1.58×2.43m
+door): the user's own annotated drawing showed the door's swing
+opening toward the south (Ю) facade, but the app reported west (З).
+
+**Two follow-up approaches tried and rejected, each with concrete
+evidence, before settling on the final one:**
+
+1. **Direction from the OVK point the topology trace reached**, via a
+   fresh nearest-edge search from *that* point instead of the marker.
+   Regressed three previously-correct rows: the reached point can
+   itself be a polygon vertex shared by two OVK edges facing different
+   directions (the exact ambiguity being fixed, just relocated).
+2. **Direction from the traced wall run's own edge**, matched to
+   whichever OVK edge runs parallel to it and closest. Regressed even
+   more rows once implemented: `Wall_44_2` (the target case) has *no*
+   long face line of its own — its whole geometry is short
+   perpendicular jamb ticks (0.06-0.1m stubs) — and a jamb tick,
+   despite being perpendicular to the true wall, can sit within a
+   generous perpendicular tolerance of a *different, unrelated* OVK
+   edge purely by coincidence of the building's own proportions
+   (confirmed: a south-wall tick sat within 0.26m of the west edge's
+   X-coordinate). Tightening the tolerance to reject that coincidence
+   (0.1m) then broke *other* real matches that legitimately need more
+   slack. No single tolerance value works.
+
+**Adopted:** `WallTopology.MarkOvkNodes` already computes, per wall-
+graph node, which OVK edge it's nearest to, at tight (0.05m)
+drafting-precision tolerance — the same authoritative fact already
+used to decide a node is "on OVK" at all. `FindExteriorOvkPaths` now
+returns every full path (not just one edge) from the opening's host
+wall to an OVK node, and `AssignOvkEdgeIndex` looks up each path's
+*already-known* edge index instead of re-deriving direction from
+(noisy) path geometry. Ties among candidate edges are broken by
+**plurality vote — the edge reached by the most paths wins**, not the
+edge with the most summed path length: tried summed length first and
+found a real case where one 10.1m path wandering through an unrelated
+wall outweighed 24 short (0-2.7m) paths correctly reaching the
+opening's true wall. Counting how many independent trace attempts
+agree is robust to that one outlier; summing length is not. Remaining
+ties break on lower total path length, then lower edge index, for full
+determinism.
+
+**Validated against the user-supplied reference table** (all 4 floors
+merged): all 16 opening-size/direction rows now match, including the
+previously-wrong corner case, with zero regressions to the 15 rows
+that were already correct.
+
+---
+
+## 2026-08-09 — Two flagged discrepancies investigated to conclusion;
+DXF data confirmed consistent in both cases
+
+**Context:** cross-checking the merged 4-floor output against the
+user's reference table surfaced two apparent problems. Both were
+investigated exhaustively per explicit instruction not to conclude
+"probably sample drift" without concrete evidence.
+
+**1. A 0.4m×2.46m window in `floor2.dxf`/`floor3.dxf` the user said
+"does not exist."** Checked every angle available in the DXF:
+
+- The real window body (`Window 22_2`, a separate INSERT from the
+  `W Marker` label, same pattern as the Archicad convention above),
+  transformed to world coordinates, lands at X[753.83,754.29] /
+  Y[-65.60,-65.20] — matching its host wall's own jamb-gap opening
+  (X[753.85,754.27]) almost exactly (frame overhangs the rough opening
+  by ~2cm each side, as real trim does).
+- Exactly one marker + one body object exist at this location — no
+  duplicates, no second reference to either block anywhere in the file.
+- No invisibility flag (DXF group code 60) on either entity; the
+  `_A [walls]` layer itself is on and unfrozen (flags=0, color=+7).
+
+Every check supports a real, deliberately-drawn opening. If it's
+still wrong, that's a property of the source drawing, not something
+detectable from the DXF's own data — flagged for the user to check the
+original CAD file at that exact location.
+
+**2. `floor3.dxf`'s w=90cm doors report height 210cm; reference implies
+208cm.** Checked whether any other DXF representation could disagree:
+
+- The raw `AC_MarkerText_3` ATTRIB text was pulled directly from two
+  separate door-marker instances in `Wall_213_2` — both say `210`,
+  verbatim, byte for byte.
+- Every w=90 door marker across the whole file reports 210; the only
+  w=90/h=208 entries anywhere are *windows*, a different marker type.
+- The paired real door body (`Door 22_3`, same convention as the
+  window above) was checked for a conflicting height. It can't have
+  one: 2D plan-view door geometry (swing arc + frame lines) never
+  encodes height at all — height is the vertical/Z dimension, invisible
+  in a top-down projection. The swing arc radius (82cm) and outer
+  frame width (92cm) are both consistent with the declared 90cm width,
+  which at least confirms this marker's own attributes are trustworthy.
+
+**Conclusion:** every representation of this door's height in the DXF
+says 210cm; there is no second representation to disagree with it.
+Per the evidence-based rule for this investigation: **the DXF is
+internally consistent at 210 — if the correct real-world value is
+208, that's a discrepancy in the source drawing (or in what the
+reference table describes), not in extraction.** Separately, and more
+likely the actual issue: the reference table has no row at all for a
+90×210 *door*, only 90×208 (fully explained by the windows alone) —
+suggesting some of `floor3.dxf`'s 90×210 doors may not belong in the
+exterior table to begin with. That is the still-open classification
+question in plan.md, not a height-reading bug.
+
+---
+
+## 2026-08-09 — Sample file drift discovered: `floor1.dxf`/`floor2.dxf`
+on disk no longer match their last-committed, validated versions
+
+**Found while debugging** an apparent regression (a fix that worked
+against the historically-documented `floor1.dxf` reference numbers
+appeared to break when tested against the *current* `samples/floor1.dxf`
+on disk). Compared the current file against the last commit that
+tracked it before `samples/` was gitignored (2026-08-05):
+
+- `samples/floor1.dxf` (commit `57162c2`): OVK boundary had 9 vertices
+  (8 distinct + closing duplicate), area 110.90 m² — exactly matching
+  every historically-validated number in this file. **Current file:**
+  OVK boundary has only 6 vertices (5 distinct), area 112.78 m² — the
+  small notch/step feature documented in the 2026-08-04 corner-count
+  entry is gone.
+- `samples/floor2.dxf` (commit `fe90845`): OVK boundary had 10
+  vertices, area 181.82 m² — matching its own historical numbers.
+  **Current file:** 17 vertices, area 202.38 m².
+
+Confirmed by re-running the fixed pipeline against the *committed*
+byte-for-byte versions: it reproduces every historical number exactly
+(floor1: С=9.70, И=12.50, Ю=9.70, З=12.50, Af=110.90, n=6, window
+1.5×1.7→С=1). The drift is in the sample files themselves, not in the
+code. Not investigated further (no way to know why the files changed,
+since `samples/` has never been tracked for these edits) — flagged in
+plan.md as open, since it means historical reference numbers in this
+file no longer reproduce from the current on-disk samples as-is.

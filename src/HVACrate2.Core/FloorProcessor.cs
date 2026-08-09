@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using HVACrate2.Core.Models;
 using netDxf;
+using netDxf.Blocks;
 using netDxf.Entities;
 
 namespace HVACrate2.Core;
@@ -144,12 +145,12 @@ public static class FloorProcessor
         return Math.Sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
     }
 
-    private static string? NearestOvkDirection(
+    private static string NearestOvkEdgeDirection(
         double px, double py, List<(double x1, double y1, double x2, double y2)> ovkEdges,
-        double northDeg, double ccwSign, double toleranceM)
+        double northDeg, double ccwSign)
     {
         double bestDist = double.MaxValue;
-        string? bestDir = null;
+        string bestDir = DirOrder[0];
         foreach (var (x1, y1, x2, y2) in ovkEdges)
         {
             double d = DistancePointToSegment(px, py, x1, y1, x2, y2);
@@ -159,19 +160,30 @@ public static class FloorProcessor
                 bestDir = EdgeOutwardDirection(x1, y1, x2, y2, northDeg, ccwSign);
             }
         }
-        return bestDist <= toleranceM ? bestDir : null;
+        return bestDir;
     }
 
+    /// <summary>
+    /// Extracts openings whose host wall — determined from wall geometry, not marker position —
+    /// is part of the OVK perimeter. See <see cref="WallTopology"/> for why marker-to-OVK distance
+    /// cannot make this call reliably, and docs/decisions.md for the investigation behind it.
+    /// </summary>
     private static List<Opening> ExtractOpeningsTouchingOvk(
         DxfDocument doc, List<(double x1, double y1, double x2, double y2)> ovkEdges,
-        double northDeg, double ccwSign, double coordDivisor, double toleranceM = 0.5)
+        double northDeg, double ccwSign, double coordDivisor)
     {
-        var markers = doc.Entities.Inserts
-            .Concat(doc.Blocks.SelectMany(b => b.Entities.OfType<Insert>()))
-            .Where(i => i.Block.Name.StartsWith("W Marker") || i.Block.Name.StartsWith("D Marker"));
+        var graph = WallTopology.BuildWallGraph(doc, coordDivisor);
+        WallTopology.MarkOvkNodes(graph, ovkEdges);
+
+        var topLevelMarkers = doc.Entities.Inserts
+            .Where(i => i.Block.Name.StartsWith("W Marker") || i.Block.Name.StartsWith("D Marker"))
+            .Select(i => (Insert: i, Parent: (Block?)null));
+        var nestedMarkers = doc.Blocks
+            .SelectMany(b => b.Entities.OfType<Insert>().Select(i => (Insert: i, Parent: (Block?)b)))
+            .Where(x => x.Insert.Block.Name.StartsWith("W Marker") || x.Insert.Block.Name.StartsWith("D Marker"));
 
         var openings = new List<Opening>();
-        foreach (var ins in markers)
+        foreach (var (ins, parent) in topLevelMarkers.Concat(nestedMarkers))
         {
             var attrs = ins.Attributes.ToDictionary(a => a.Tag, a => a.Value?.ToString() ?? "");
             if (!attrs.TryGetValue("AC_MarkerText_2", out var wStr)) continue;
@@ -179,9 +191,15 @@ public static class FloorProcessor
             if (!double.TryParse(wStr.Replace(",", "."), out double widthCm)) continue;
             if (!double.TryParse(hStr.Replace(",", "."), out double heightCm)) continue;
 
+            var hostNodes = WallTopology.FindHostWallNodes(doc, graph, ins, parent);
+            if (!WallTopology.IsExterior(hostNodes, graph)) continue;
+
+            // Direction from the marker's own position — known limitation: a marker very close to
+            // a building corner can occasionally pick the adjacent facade instead of its own (see
+            // docs/decisions.md; addressed in a later commit this session by assigning direction
+            // from the OVK edge the host wall's own topology trace reaches, instead).
             double px = ins.Position.X / coordDivisor, py = ins.Position.Y / coordDivisor;
-            string? dir = NearestOvkDirection(px, py, ovkEdges, northDeg, ccwSign, toleranceM);
-            if (dir == null) continue;
+            string dir = NearestOvkEdgeDirection(px, py, ovkEdges, northDeg, ccwSign);
 
             openings.Add(new Opening
             {

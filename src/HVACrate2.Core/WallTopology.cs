@@ -48,6 +48,15 @@ internal static class WallTopology
         public readonly Dictionary<(double x, double y), HashSet<(double x, double y)>> Adjacency = new();
         public readonly HashSet<(double x, double y)> OvkNodes = new();
 
+        // Which OVK edge (index into the ovkEdges list passed to MarkOvkNodes) each OVK node was
+        // matched to, at the same tight (OvkNodeToleranceM) precision used to decide it was an OVK
+        // node at all. This is the authoritative source for an opening's direction — see
+        // AssignOvkEdgeIndex — because it only ever reflects a genuine wall-face-to-boundary touch,
+        // never a coincidentally-nearby but unrelated edge (unlike re-deriving direction from a
+        // traced path's own segments, which can include short perpendicular jamb ticks — see
+        // docs/decisions.md for the specific case this caused).
+        public readonly Dictionary<(double x, double y), int> OvkEdgeIndexByNode = new();
+
         // Same raw-units-to-meters divisor FloorProcessor detected for this file's OVK geometry
         // (see FloorProcessor.DetectCoordinateDivisor) — a DXF uses one coordinate convention
         // throughout, so wall geometry must be converted the same way as the OVK boundary was.
@@ -148,20 +157,70 @@ internal static class WallTopology
         return graph;
     }
 
-    /// <summary>Marks every wall-graph node that coincides with an OVK edge, within drafting-precision tolerance.</summary>
+    /// <summary>
+    /// Marks every wall-graph node that coincides with an OVK edge, within drafting-precision
+    /// tolerance, and records which specific edge each one matched (see
+    /// <see cref="WallGraph.OvkEdgeIndexByNode"/>).
+    /// </summary>
     internal static void MarkOvkNodes(WallGraph graph, List<(double x1, double y1, double x2, double y2)> ovkEdges)
     {
         foreach (var node in graph.Adjacency.Keys)
         {
             double best = double.MaxValue;
-            foreach (var (x1, y1, x2, y2) in ovkEdges)
+            int bestIdx = -1;
+            for (int e = 0; e < ovkEdges.Count; e++)
             {
+                var (x1, y1, x2, y2) = ovkEdges[e];
                 double d = DistancePointToSegment(node.x, node.y, x1, y1, x2, y2);
-                if (d < best) best = d;
+                if (d < best) { best = d; bestIdx = e; }
             }
             if (best <= OvkNodeToleranceM)
+            {
                 graph.OvkNodes.Add(node);
+                graph.OvkEdgeIndexByNode[node] = bestIdx;
+            }
         }
+    }
+
+    /// <summary>
+    /// Assigns the OVK edge index for an opening from every path its host wall reached OVK by,
+    /// deterministically: group paths by which edge their reached node was matched to (an
+    /// authoritative fact from <see cref="MarkOvkNodes"/>, not re-derived here) and take the edge
+    /// reached by the most paths — plurality vote, not total path length. Length was tried first
+    /// and rejected: a single long detour through an unrelated, incidentally-collinear-enough wall
+    /// run can outweigh many short, genuinely-correct paths to the opening's real wall (confirmed
+    /// case: 24 short paths of ~0-2.7m each correctly reached the opening's own east wall, while one
+    /// 10.1m path wandered the entire south wall and would have won on length alone — see
+    /// docs/decisions.md). A short local path is exactly as much evidence as a long one; counting
+    /// how many independent trace attempts agree is robust to that one outlier the way summing
+    /// length is not. Ties break on lower total path length (the more local, more likely genuine
+    /// signal), then on lower edge index, for full determinism.
+    /// </summary>
+    internal static int? AssignOvkEdgeIndex(List<List<(double x, double y)>> paths, WallGraph graph)
+    {
+        var countByEdge = new Dictionary<int, int>();
+        var lengthByEdge = new Dictionary<int, double>();
+        foreach (var path in paths)
+        {
+            if (path.Count == 0) continue;
+            if (!graph.OvkEdgeIndexByNode.TryGetValue(path[^1], out int edgeIdx)) continue;
+
+            double len = 0.0;
+            for (int i = 0; i < path.Count - 1; i++)
+            {
+                double dx = path[i + 1].x - path[i].x, dy = path[i + 1].y - path[i].y;
+                len += Math.Sqrt(dx * dx + dy * dy);
+            }
+            countByEdge[edgeIdx] = countByEdge.GetValueOrDefault(edgeIdx) + 1;
+            lengthByEdge[edgeIdx] = lengthByEdge.GetValueOrDefault(edgeIdx) + len;
+        }
+
+        if (countByEdge.Count == 0) return null;
+        return countByEdge.Keys
+            .OrderByDescending(e => countByEdge[e])
+            .ThenBy(e => lengthByEdge[e])
+            .ThenBy(e => e)
+            .First();
     }
 
     /// <summary>
@@ -259,42 +318,58 @@ internal static class WallTopology
     }
 
     /// <summary>
-    /// True if ANY of the opening's host-wall candidate nodes reaches an OVK-coincident node by
-    /// following the SAME wall run — not merely the wall network at large. This is the distinction
-    /// the classification actually needs: an interior partition typically joins its host exterior
-    /// wall at a real corner (~90 degrees), so a network-wide hop search would wrongly credit it
-    /// with the exterior wall it merely touches. Tracing only near-straight continuations (see
+    /// Finds every path — as a full sequence of wall-graph nodes, not just a single edge — from any
+    /// of the opening's host-wall candidates to an OVK-coincident node, following the SAME wall run
+    /// at each step (not the wall network at large). This is the distinction the classification
+    /// actually needs: an interior partition typically joins its host exterior wall at a real
+    /// corner (~90 degrees), so a network-wide hop search would wrongly credit it with the exterior
+    /// wall it merely touches. Tracing only near-straight continuations (see
     /// <see cref="MaxCollinearDeviationDeg"/>) stops at that corner instead of crossing into a
     /// different wall's identity, while still tolerating the small kinks real (non-bug) wall runs
     /// have at drafting/party-wall seams.
+    /// Returns every viable path, not just the first found: a touch point can have more than one
+    /// direction the wall leaves it in (e.g. a mid-run touch has two), and the caller needs all of
+    /// them to pick the OVK segment by plurality vote (see AssignOvkEdgeIndex) rather than by
+    /// whichever one happened to be tried first.
     /// </summary>
-    internal static bool IsExterior(List<(double x, double y)> hostNodes, WallGraph graph)
-        => hostNodes.Any(start => ReachesOvkAlongSameWall(start, graph));
-
-    private static bool ReachesOvkAlongSameWall((double x, double y) start, WallGraph graph)
+    internal static List<List<(double x, double y)>> FindExteriorOvkPaths(List<(double x, double y)> hostNodes, WallGraph graph)
     {
-        if (graph.OvkNodes.Contains(start)) return true;
-        if (!graph.Adjacency.TryGetValue(start, out var neighbors)) return false;
+        var results = new List<List<(double x, double y)>>();
+        var seenStarts = new HashSet<(double x, double y)>();
 
-        // Try continuing in each direction the wall leaves this node — a mid-wall touch point
-        // has (at least) two, one toward each end of the run.
-        foreach (var first in neighbors)
+        foreach (var start in hostNodes)
         {
-            if (graph.OvkNodes.Contains(first)) return true;
-            if (TraceStraightRunToOvk(start, first, graph)) return true;
+            if (!seenStarts.Add(start)) continue;
+
+            if (graph.OvkNodes.Contains(start))
+                results.Add([start]);
+
+            if (!graph.Adjacency.TryGetValue(start, out var neighbors)) continue;
+            foreach (var first in neighbors)
+            {
+                if (graph.OvkNodes.Contains(first))
+                {
+                    results.Add([start, first]);
+                    continue;
+                }
+                var path = TraceStraightRunToOvk(start, first, graph);
+                if (path is not null) results.Add(path);
+            }
         }
-        return false;
+
+        return results;
     }
 
-    private static bool TraceStraightRunToOvk((double x, double y) prev, (double x, double y) cur, WallGraph graph)
+    private static List<(double x, double y)>? TraceStraightRunToOvk((double x, double y) prev, (double x, double y) cur, WallGraph graph)
     {
+        var path = new List<(double x, double y)> { prev, cur };
         var visited = new HashSet<(double x, double y)> { prev, cur };
         double dirX = cur.x - prev.x, dirY = cur.y - prev.y;
 
         for (int step = 0; step < MaxTraceSteps; step++)
         {
-            if (graph.OvkNodes.Contains(cur)) return true;
-            if (!graph.Adjacency.TryGetValue(cur, out var neighbors)) return false;
+            if (graph.OvkNodes.Contains(cur)) return path;
+            if (!graph.Adjacency.TryGetValue(cur, out var neighbors)) return null;
 
             (double x, double y)? best = null;
             double bestAngle = double.MaxValue;
@@ -304,14 +379,15 @@ internal static class WallTopology
                 double angle = AngleBetweenDeg(dirX, dirY, next.x - cur.x, next.y - cur.y);
                 if (angle < bestAngle) { bestAngle = angle; best = next; }
             }
-            if (best is null || bestAngle > MaxCollinearDeviationDeg) return false;
+            if (best is null || bestAngle > MaxCollinearDeviationDeg) return null;
 
             visited.Add(best.Value);
+            path.Add(best.Value);
             dirX = best.Value.x - cur.x;
             dirY = best.Value.y - cur.y;
             cur = best.Value;
         }
-        return false;
+        return null;
     }
 
     private static double AngleBetweenDeg(double x1, double y1, double x2, double y2)

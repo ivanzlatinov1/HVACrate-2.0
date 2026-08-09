@@ -164,6 +164,27 @@ public static class FloorProcessor
     }
 
     /// <summary>
+    /// Assigns an opening's compass direction from the OVK perimeter segment its host wall run
+    /// actually reaches — see <see cref="WallTopology.AssignOvkEdgeIndex"/> for the deterministic
+    /// rule (plurality vote among traced paths, grouped by which OVK edge each path's reached node
+    /// was already confirmed to belong to at tight/drafting precision). Falls back to
+    /// nearest-point-to-the-marker only for the degenerate case where classification somehow found
+    /// a path but it matched no OVK edge index (should not occur in practice).
+    /// </summary>
+    private static string AssignOvkDirection(
+        List<List<(double x, double y)>> paths, WallTopology.WallGraph graph,
+        (double x, double y) markerPos,
+        List<(double x1, double y1, double x2, double y2)> ovkEdges, double northDeg, double ccwSign)
+    {
+        int? edgeIdx = WallTopology.AssignOvkEdgeIndex(paths, graph);
+        if (edgeIdx is null)
+            return NearestOvkEdgeDirection(markerPos.x, markerPos.y, ovkEdges, northDeg, ccwSign);
+
+        var (fx1, fy1, fx2, fy2) = ovkEdges[edgeIdx.Value];
+        return EdgeOutwardDirection(fx1, fy1, fx2, fy2, northDeg, ccwSign);
+    }
+
+    /// <summary>
     /// Extracts openings whose host wall — determined from wall geometry, not marker position —
     /// is part of the OVK perimeter. See <see cref="WallTopology"/> for why marker-to-OVK distance
     /// cannot make this call reliably, and docs/decisions.md for the investigation behind it.
@@ -192,14 +213,11 @@ public static class FloorProcessor
             if (!double.TryParse(hStr.Replace(",", "."), out double heightCm)) continue;
 
             var hostNodes = WallTopology.FindHostWallNodes(doc, graph, ins, parent);
-            if (!WallTopology.IsExterior(hostNodes, graph)) continue;
+            var paths = WallTopology.FindExteriorOvkPaths(hostNodes, graph);
+            if (paths.Count == 0) continue;
 
-            // Direction from the marker's own position — known limitation: a marker very close to
-            // a building corner can occasionally pick the adjacent facade instead of its own (see
-            // docs/decisions.md; addressed in a later commit this session by assigning direction
-            // from the OVK edge the host wall's own topology trace reaches, instead).
-            double px = ins.Position.X / coordDivisor, py = ins.Position.Y / coordDivisor;
-            string dir = NearestOvkEdgeDirection(px, py, ovkEdges, northDeg, ccwSign);
+            var markerPos = (ins.Position.X / coordDivisor, ins.Position.Y / coordDivisor);
+            string dir = AssignOvkDirection(paths, graph, markerPos, ovkEdges, northDeg, ccwSign);
 
             openings.Add(new Opening
             {

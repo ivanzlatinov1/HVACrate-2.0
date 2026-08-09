@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using HVACrate2.Core.Models;
 using netDxf;
+using netDxf.Blocks;
 using netDxf.Entities;
 
 namespace HVACrate2.Core;
@@ -38,11 +39,61 @@ public static class FloorProcessor
         return sum / 2.0;
     }
 
-    private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer)
+    // Most sample projects author DXF coordinates in centimeters (divide raw units by 100 for
+    // meters). Some exports (confirmed on a real Archicad file) instead use millimeters, despite
+    // declaring an unrelated/generic $INSUNITS header value identical to the centimeter files —
+    // that header cannot be trusted to tell the two conventions apart. See DetectCoordinateDivisor.
+    private const double CentimeterDivisor = 100.0;
+    private const double MillimeterDivisor = 1000.0;
+
+    // No real single floor plate is this large — used only to pick between the two known
+    // real-world DXF unit conventions above, not as an opening-classification heuristic.
+    private const double ImplausibleFloorAreaM2 = 20000.0;
+
+    private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer, double coordDivisor)
     {
-        var poly = doc.Entities.Polylines2D.FirstOrDefault(p => p.Layer.Name.Contains(ovkLayer))
-            ?? throw new InvalidOperationException($"Не е намерена гранична полилиния на слой '{ovkLayer}'.");
-        return poly.Vertexes.Select(v => (v.Position.X / 100.0, v.Position.Y / 100.0)).ToList();
+        // Ensure the vertex list ends with a duplicate of the first vertex, regardless of
+        // whether the source polyline closes via an explicit repeated vertex or via its
+        // "closed" flag — every other function in this file assumes the former.
+        List<(double x, double y)> ToClosedRing(IEnumerable<(double x, double y)> raw)
+        {
+            var pts = raw.ToList();
+            if (pts.Count >= 2)
+            {
+                var (fx, fy) = pts[0];
+                var (lx, ly) = pts[^1];
+                if (Math.Abs(fx - lx) > 1e-6 || Math.Abs(fy - ly) > 1e-6)
+                    pts.Add(pts[0]);
+            }
+            return pts;
+        }
+
+        var candidates = doc.Entities.Polylines2D
+            .Where(p => p.Layer.Name.Contains(ovkLayer))
+            .Select(p => ToClosedRing(p.Vertexes.Select(v => (v.Position.X / coordDivisor, v.Position.Y / coordDivisor))))
+            .Where(v => v.Count >= 4)
+            .ToList();
+
+        if (candidates.Count == 0)
+            throw new InvalidOperationException($"Не е намерена гранична полилиния на слой '{ovkLayer}'.");
+
+        // The OVK layer can hold more than just the building envelope — individual
+        // room/apartment outlines, annotation frames, etc. drawn on the same layer.
+        // The true exterior envelope always encloses the largest area of any of them,
+        // so pick that one instead of just the first match found in the file.
+        return candidates.OrderByDescending(v => Math.Abs(SignedArea(v))).First();
+    }
+
+    /// <summary>
+    /// Picks the coordinate-to-meters divisor for this file: centimeters by default, falling back
+    /// to millimeters only if that produces an implausible floor area. A real floor plate's area
+    /// scales as the square of the divisor error, so the two conventions are never close enough to
+    /// confuse — a centimeter-file misread as millimeters undershoots by 100x, not by a few percent.
+    /// </summary>
+    private static double DetectCoordinateDivisor(DxfDocument doc, string ovkLayer)
+    {
+        var atCm = OvkVertices(doc, ovkLayer, CentimeterDivisor);
+        return Math.Abs(SignedArea(atCm)) <= ImplausibleFloorAreaM2 ? CentimeterDivisor : MillimeterDivisor;
     }
 
     private static List<(double x1, double y1, double x2, double y2)> OvkEdges(List<(double x, double y)> vertices)
@@ -94,12 +145,12 @@ public static class FloorProcessor
         return Math.Sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
     }
 
-    private static string? NearestOvkDirection(
+    private static string NearestOvkEdgeDirection(
         double px, double py, List<(double x1, double y1, double x2, double y2)> ovkEdges,
-        double northDeg, double ccwSign, double toleranceM)
+        double northDeg, double ccwSign)
     {
         double bestDist = double.MaxValue;
-        string? bestDir = null;
+        string bestDir = DirOrder[0];
         foreach (var (x1, y1, x2, y2) in ovkEdges)
         {
             double d = DistancePointToSegment(px, py, x1, y1, x2, y2);
@@ -109,19 +160,51 @@ public static class FloorProcessor
                 bestDir = EdgeOutwardDirection(x1, y1, x2, y2, northDeg, ccwSign);
             }
         }
-        return bestDist <= toleranceM ? bestDir : null;
+        return bestDir;
     }
 
+    /// <summary>
+    /// Assigns an opening's compass direction from the OVK perimeter segment its host wall run
+    /// actually reaches — see <see cref="WallTopology.AssignOvkEdgeIndex"/> for the deterministic
+    /// rule (plurality vote among traced paths, grouped by which OVK edge each path's reached node
+    /// was already confirmed to belong to at tight/drafting precision). Falls back to
+    /// nearest-point-to-the-marker only for the degenerate case where classification somehow found
+    /// a path but it matched no OVK edge index (should not occur in practice).
+    /// </summary>
+    private static string AssignOvkDirection(
+        List<List<(double x, double y)>> paths, WallTopology.WallGraph graph,
+        (double x, double y) markerPos,
+        List<(double x1, double y1, double x2, double y2)> ovkEdges, double northDeg, double ccwSign)
+    {
+        int? edgeIdx = WallTopology.AssignOvkEdgeIndex(paths, graph);
+        if (edgeIdx is null)
+            return NearestOvkEdgeDirection(markerPos.x, markerPos.y, ovkEdges, northDeg, ccwSign);
+
+        var (fx1, fy1, fx2, fy2) = ovkEdges[edgeIdx.Value];
+        return EdgeOutwardDirection(fx1, fy1, fx2, fy2, northDeg, ccwSign);
+    }
+
+    /// <summary>
+    /// Extracts openings whose host wall — determined from wall geometry, not marker position —
+    /// is part of the OVK perimeter. See <see cref="WallTopology"/> for why marker-to-OVK distance
+    /// cannot make this call reliably, and docs/decisions.md for the investigation behind it.
+    /// </summary>
     private static List<Opening> ExtractOpeningsTouchingOvk(
         DxfDocument doc, List<(double x1, double y1, double x2, double y2)> ovkEdges,
-        double northDeg, double ccwSign, double toleranceM = 0.5)
+        double northDeg, double ccwSign, double coordDivisor)
     {
-        var markers = doc.Entities.Inserts
-            .Concat(doc.Blocks.SelectMany(b => b.Entities.OfType<Insert>()))
-            .Where(i => i.Block.Name.StartsWith("W Marker") || i.Block.Name.StartsWith("D Marker"));
+        var graph = WallTopology.BuildWallGraph(doc, coordDivisor);
+        WallTopology.MarkOvkNodes(graph, ovkEdges);
+
+        var topLevelMarkers = doc.Entities.Inserts
+            .Where(i => i.Block.Name.StartsWith("W Marker") || i.Block.Name.StartsWith("D Marker"))
+            .Select(i => (Insert: i, Parent: (Block?)null));
+        var nestedMarkers = doc.Blocks
+            .SelectMany(b => b.Entities.OfType<Insert>().Select(i => (Insert: i, Parent: (Block?)b)))
+            .Where(x => x.Insert.Block.Name.StartsWith("W Marker") || x.Insert.Block.Name.StartsWith("D Marker"));
 
         var openings = new List<Opening>();
-        foreach (var ins in markers)
+        foreach (var (ins, parent) in topLevelMarkers.Concat(nestedMarkers))
         {
             var attrs = ins.Attributes.ToDictionary(a => a.Tag, a => a.Value?.ToString() ?? "");
             if (!attrs.TryGetValue("AC_MarkerText_2", out var wStr)) continue;
@@ -129,9 +212,12 @@ public static class FloorProcessor
             if (!double.TryParse(wStr.Replace(",", "."), out double widthCm)) continue;
             if (!double.TryParse(hStr.Replace(",", "."), out double heightCm)) continue;
 
-            double px = ins.Position.X / 100.0, py = ins.Position.Y / 100.0;
-            string? dir = NearestOvkDirection(px, py, ovkEdges, northDeg, ccwSign, toleranceM);
-            if (dir == null) continue;
+            var hostNodes = WallTopology.FindHostWallNodes(doc, graph, ins, parent);
+            var paths = WallTopology.FindExteriorOvkPaths(hostNodes, graph);
+            if (paths.Count == 0) continue;
+
+            var markerPos = (ins.Position.X / coordDivisor, ins.Position.Y / coordDivisor);
+            string dir = AssignOvkDirection(paths, graph, markerPos, ovkEdges, northDeg, ccwSign);
 
             openings.Add(new Opening
             {
@@ -173,7 +259,8 @@ public static class FloorProcessor
     {
         var doc = DxfDocument.Load(input.DxfPath);
 
-        var ovkVertices = OvkVertices(doc, ovkLayer);
+        double coordDivisor = DetectCoordinateDivisor(doc, ovkLayer);
+        var ovkVertices = OvkVertices(doc, ovkLayer, coordDivisor);
         var ovkEdges = OvkEdges(ovkVertices);
         double signedArea = SignedArea(ovkVertices);
         double ccwSign = Math.Sign(signedArea);
@@ -183,7 +270,7 @@ public static class FloorProcessor
         double volumeM3 = areaM2 * input.HeightM;
         int convexCorners = CountConvexCorners(ovkVertices, ccwSign);
 
-        var openings = ExtractOpeningsTouchingOvk(doc, ovkEdges, input.NorthDeg, ccwSign);
+        var openings = ExtractOpeningsTouchingOvk(doc, ovkEdges, input.NorthDeg, ccwSign, coordDivisor);
         var openingGroups = GroupOpenings(openings);
 
         return new FloorResult
@@ -219,12 +306,35 @@ public static class FloorProcessor
                 ws.Cell($"{col}{r}").Value = val;
         }
         ws.Cell($"L{r}").Value = Math.Round(totalPerimeter, 2);
+    }
+
+    /// <summary>Adds one floor's opening counts into a building-wide accumulator, summing counts for any (width, height) size already seen on an earlier floor instead of keeping them as separate entries.</summary>
+    private static void MergeOpeningGroups(
+        Dictionary<(double w, double h), Dictionary<string, int>> target,
+        Dictionary<(double w, double h), Dictionary<string, int>> source)
+    {
+        foreach (var (key, byDir) in source)
+        {
+            if (!target.TryGetValue(key, out var totals))
+            {
+                totals = DirOrder.ToDictionary(d => d, d => 0);
+                target[key] = totals;
+            }
+            foreach (var (dir, count) in byDir)
+                totals[dir] += count;
+        }
+    }
+
+    /// <summary>Writes the building-wide openings table (one row per distinct width×height size, summed across all floors) starting at <see cref="OpeningsTableStartRow"/>.</summary>
+    private static void WriteOpeningsTable(XLWorkbook wb, Dictionary<(double w, double h), Dictionary<string, int>> mergedGroups)
+    {
+        var ws = wb.Worksheet("Изчисления");
 
         int row = OpeningsTableStartRow;
         while (!ws.Cell($"B{row}").IsEmpty())
             row++;
 
-        foreach (var kvp in result.OpeningGroups)
+        foreach (var kvp in mergedGroups.OrderBy(g => g.Key.w).ThenBy(g => g.Key.h))
         {
             var (widthM, heightM) = kvp.Key;
             var byDir = kvp.Value;
@@ -267,13 +377,16 @@ public static class FloorProcessor
         using var wb = new XLWorkbook(templateExcelPath);
         int totalApartments = 0;
         double totalAreaM2 = 0.0;
+        var mergedOpenings = new Dictionary<(double w, double h), Dictionary<string, int>>();
         for (int i = 0; i < floors.Count; i++)
         {
             var result = ProcessFloor(floors[i], ovkLayer);
             WriteFloorToExcel(wb, floors[i], result, i);
+            MergeOpeningGroups(mergedOpenings, result.OpeningGroups);
             totalApartments += floors[i].ApartmentCount;
             totalAreaM2 += result.AreaM2;
         }
+        WriteOpeningsTable(wb, mergedOpenings);
         WriteApplianceBlock(wb, totalApartments, totalAreaM2);
         wb.SaveAs(outputExcelPath);
     }

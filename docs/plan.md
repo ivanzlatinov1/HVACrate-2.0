@@ -44,16 +44,61 @@
       `FloorRow`. See decisions.md, 2026-08-04.
 - [x] `AC_WIDO_ID` marker attribute — final decision: unused, ignored.
       See decisions.md, 2026-08-05.
-- [ ] `OVK` boundary approach validated on one sample only
-      (`floor2.dxf`). Needs testing against more floor plans: a
-      non-rectangular shape, a rotated building (non-zero north angle),
-      and a marker sitting equidistant between two `OVK` edges at a
-      corner (tie-break behavior untested). **Deferred until after
-      Phase 3 (UI).**
+- [x] `OVK` boundary approach validated against a non-rectangular,
+      rotated (north=45°) real file (`samples/example.dxf`) and the
+      marker-at-a-corner tie-break case, 2026-08-09. Two real bugs
+      found along the way and fixed: the boundary polyline was picked
+      via `FirstOrDefault` (wrong on files that reuse the `OVK` layer
+      for room outlines too — see decisions.md), and the corner
+      tie-break originally picked the wrong facade for one opening
+      (now resolved deterministically — see decisions.md).
 - [x] `OvkLayer` name — final decision: hardcoded `"OVK"`/`"ovk"`, not
       configurable. See decisions.md, 2026-08-05.
 - [x] Columns H (Аок)/I (Аерк)/J (Lерк) — final decision: left blank,
       no calculation. See decisions.md, 2026-08-05.
+- [x] Opening exterior/interior classification — marker-to-`OVK`
+      straight-line distance replaced with wall-topology tracing
+      (host wall determined from geometry, classified by whether that
+      specific wall reaches `OVK`). See decisions.md, 2026-08-09, for
+      the full investigation and why every distance-threshold
+      approach tried first failed.
+- [ ] **Open:** exterior/interior classification is still imprecise for
+      some small doors. Two near-identical floor plans (`floor2.dxf`
+      and `floor3.dxf`, same wall-block layout) classify their w=90cm
+      doors differently from each other, and neither matches a real
+      reference table (which implies none of that door size should be
+      exterior at all). Root cause not found — direction assignment
+      for already-classified openings was fixed this session (see
+      decisions.md, 2026-08-09), but the classification call itself
+      for these doors is still suspect. Needs its own investigation.
+- [ ] **Open:** `samples/floor1.dxf` and `samples/floor2.dxf` on disk
+      no longer match the versions that were originally validated and
+      committed (found 2026-08-09 — see decisions.md). Since
+      `samples/` is gitignored, there is no history for the current
+      files. Not blocking, but means historical reference numbers in
+      this file and decisions.md no longer reproduce from the current
+      sample files as-is.
+- [ ] **Open:** coordinate-unit auto-detection (centimeters vs
+      millimeters, see decisions.md 2026-08-09) is a plausibility
+      heuristic (implausible-floor-area threshold), validated against
+      exactly the two real conventions seen so far. Untested against a
+      third convention (e.g. inches) or a genuinely oversized/undersized
+      real floor that could fool the threshold either way.
+- [ ] **Open:** wall-layer detection for the topology classifier
+      (`WallTopology.IsWallLayer`) matches any layer whose name
+      contains "wall" (case-insensitive, English). Works for every
+      current sample (`_A [walls]`, `STR- Exterior/Interior walls`);
+      unverified against a non-English wall-layer naming convention.
+- [ ] **Flagged, not a code bug:** a 0.4m×2.46m window in
+      `floor2.dxf`/`floor3.dxf` and a 90×210cm door height in
+      `floor3.dxf` were both reported as possibly wrong. Investigated
+      exhaustively (geometry, duplicates, hidden/disabled flags,
+      alternate attributes, paired body objects) — every check
+      confirms the DXF data itself is internally consistent and
+      geometrically real; see decisions.md, 2026-08-09, for the full
+      evidence trail. If these are still wrong, the discrepancy is in
+      the source drawing, not in extraction — needs the user to check
+      the original CAD file directly.
 
 ## Phase 3 — WPF UI
 

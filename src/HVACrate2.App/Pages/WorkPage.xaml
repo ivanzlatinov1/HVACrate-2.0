@@ -111,12 +111,10 @@
             <TextBlock x:Name="StatusText" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,10"
                        TextWrapping="Wrap" Visibility="Collapsed" />
             <StackPanel Orientation="Horizontal">
-                <Button x:Name="ExtractButton" Content="Extract &amp; Fill Excel" Style="{StaticResource NavButtonStyle}"
+                <Button x:Name="ExtractButton" Content="Extract &amp; Preview" Style="{StaticResource NavButtonStyle}"
                         Padding="20,12" Click="OnExtractClick" Margin="0,0,12,0" />
                 <controls:LoadingSpinner x:Name="ExtractSpinner" VerticalAlignment="Center"
                                           Margin="0,0,12,0" Visibility="Collapsed" />
-                <Button x:Name="DownloadButton" Content="Download filled Excel" Style="{StaticResource NavButtonStyle}"
-                        Padding="20,12" Click="OnDownloadClick" Visibility="Collapsed" />
             </StackPanel>
         </StackPanel>
     </Grid>

@@ -246,6 +246,8 @@ public static class FloorProcessor
                 WidthM = Math.Round(widthCm / 100.0, 2),
                 HeightM = Math.Round(heightCm / 100.0, 2),
                 Direction = dir,
+                PositionXM = markerPos.Item1,
+                PositionYM = markerPos.Item2,
             });
         }
         return openings;
@@ -302,6 +304,8 @@ public static class FloorProcessor
             ConvexCorners = convexCorners,
             WallTotals = wallTotals,
             OpeningGroups = openingGroups,
+            OvkVerticesM = ovkVertices,
+            Openings = openings,
         };
     }
 
@@ -388,6 +392,36 @@ public static class FloorProcessor
         ws.Cell("D348").Value = totalApartments;                 // Хора (people)
     }
 
+    /// <summary>Computes each floor's DXF result (in order, floor 0 = Floor I) without writing Excel — for a review/preview step before committing to the write.</summary>
+    public static List<FloorResult> ProcessFloors(IReadOnlyList<FloorInput> floors, string ovkLayer = "OVK")
+        => floors.Select(f => ProcessFloor(f, ovkLayer)).ToList();
+
+    /// <summary>
+    /// Writes already-computed per-floor results into a copy of the template workbook saved at
+    /// <paramref name="outputExcelPath"/>. The template file itself is never modified. Takes
+    /// pre-computed <see cref="FloorResult"/>s (e.g. from <see cref="ProcessFloors"/>) so a caller
+    /// that already showed the user a preview doesn't have to re-parse every DXF to write it.
+    /// </summary>
+    public static void WriteFloorsToExcel(
+        IReadOnlyList<FloorInput> floors, IReadOnlyList<FloorResult> results,
+        string templateExcelPath, string outputExcelPath)
+    {
+        using var wb = new XLWorkbook(templateExcelPath);
+        int totalApartments = 0;
+        double totalAreaM2 = 0.0;
+        var mergedOpenings = new Dictionary<(double w, double h), Dictionary<string, int>>();
+        for (int i = 0; i < floors.Count; i++)
+        {
+            WriteFloorToExcel(wb, floors[i], results[i], i);
+            MergeOpeningGroups(mergedOpenings, results[i].OpeningGroups);
+            totalApartments += floors[i].ApartmentCount;
+            totalAreaM2 += results[i].AreaM2;
+        }
+        WriteOpeningsTable(wb, mergedOpenings);
+        WriteApplianceBlock(wb, totalApartments, totalAreaM2);
+        wb.SaveAs(outputExcelPath);
+    }
+
     /// <summary>
     /// Full pipeline for a building: processes each floor's DXF (in order, floor 0 = Floor I) and
     /// writes all results into a copy of the template workbook saved at <paramref name="outputExcelPath"/>.
@@ -396,20 +430,7 @@ public static class FloorProcessor
     public static void ProcessAndWriteFloors(
         IReadOnlyList<FloorInput> floors, string templateExcelPath, string outputExcelPath, string ovkLayer = "OVK")
     {
-        using var wb = new XLWorkbook(templateExcelPath);
-        int totalApartments = 0;
-        double totalAreaM2 = 0.0;
-        var mergedOpenings = new Dictionary<(double w, double h), Dictionary<string, int>>();
-        for (int i = 0; i < floors.Count; i++)
-        {
-            var result = ProcessFloor(floors[i], ovkLayer);
-            WriteFloorToExcel(wb, floors[i], result, i);
-            MergeOpeningGroups(mergedOpenings, result.OpeningGroups);
-            totalApartments += floors[i].ApartmentCount;
-            totalAreaM2 += result.AreaM2;
-        }
-        WriteOpeningsTable(wb, mergedOpenings);
-        WriteApplianceBlock(wb, totalApartments, totalAreaM2);
-        wb.SaveAs(outputExcelPath);
+        var results = ProcessFloors(floors, ovkLayer);
+        WriteFloorsToExcel(floors, results, templateExcelPath, outputExcelPath);
     }
 }

@@ -7,4 +7,8 @@ public sealed class FloorResult
     public int ConvexCorners { get; set; }
     public Dictionary<string, double> WallTotals { get; set; } = new();
     public Dictionary<(double Width, double Height), Dictionary<string, int>> OpeningGroups { get; set; } = new();
+
+    // For the 2D preview only — not used by the Excel write, which works off WallTotals/OpeningGroups.
+    public List<(double X, double Y)> OvkVerticesM { get; set; } = new();
+    public List<Opening> Openings { get; set; } = new();
 }

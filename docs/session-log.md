@@ -505,3 +505,56 @@ Phase 1's original opening-extraction logic.
   before the final Excel write — still not built (carried over from
   every prior session).
 - Phase 4 (packaging/distribution) — still not started.
+
+---
+
+## 2026-08-09 — Session 10 (branch
+`fix/exterior-opening-classification-host-wall-topology`, merged to `main`)
+
+**Context:** closed out Session 9's open item — floor2.dxf/floor3.dxf's
+w=90cm doors classifying inconsistently and matching no reference
+table. User supplied a full 17-row, 4-floor reference table this
+session, which is what made rigorous validation (and root-causing)
+possible.
+
+**Done:**
+
+- Investigated the exact structural difference between a genuine
+  exterior door and the misclassified ones, using purpose-built
+  read-only diagnostics (chain-following through collinear wall
+  blocks, per-block OVK-overlap checks, full decision-path traces
+  against the real pipeline internals) rather than reasoning from
+  assumption at any step.
+- Root cause found: the CAD exporter splits one physical exterior wall
+  into many separate `Wall_N_2` blocks (one per opening) with no
+  explicit link between them anywhere in the DXF.
+- Two intermediate fixes were tried, validated against the full
+  reference table, found to regress other openings, and reverted or
+  redesigned in the same session — both are logged in decisions.md
+  with the concrete evidence that ruled each one out (a notch-edge
+  exclusion rule that also excluded genuine windows; a whole-run
+  node-union approach that fixed the original bug but introduced 8 new
+  false-positive/wrong-direction mismatches).
+- Shipped fix: `WallTopology.BuildWallRun` reconstructs the physical
+  wall run (nested convention only) and is used *only* to decide
+  exterior/interior; path-finding and direction assignment stay scoped
+  to the opening's own host block. Validated: all 17 reference rows
+  match exactly (53/53 openings, 0 false positives/negatives/direction
+  errors/duplicates). Floor areas/wall lengths/corner counts and the
+  Archicad (`example.dxf`) branch confirmed unchanged.
+- Cleaned up all throwaway diagnostic code (`DebugTrace.cs` and extra
+  `Program.cs` command branches) before committing — final diff touches
+  only `FloorProcessor.cs`/`WallTopology.cs`.
+- Branch pushed and merged to `main` via GitHub.
+
+**Open for the next session:**
+
+- Sample-file drift (`floor1.dxf`/`floor2.dxf` on disk ≠ originally
+  validated versions) — still unresolved, unrelated to this session's
+  fix (see plan.md/decisions.md, 2026-08-09).
+- Coordinate-unit auto-detection (cm vs mm) and wall-layer-name
+  detection (`WallTopology.IsWallLayer`, English "wall" substring) —
+  both still untested against conventions beyond the ones already seen.
+- 2D preview / results-review table before the Excel write — still not
+  built.
+- Phase 4 (packaging/distribution) — still not started.

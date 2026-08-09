@@ -62,15 +62,18 @@
       specific wall reaches `OVK`). See decisions.md, 2026-08-09, for
       the full investigation and why every distance-threshold
       approach tried first failed.
-- [ ] **Open:** exterior/interior classification is still imprecise for
-      some small doors. Two near-identical floor plans (`floor2.dxf`
-      and `floor3.dxf`, same wall-block layout) classify their w=90cm
-      doors differently from each other, and neither matches a real
-      reference table (which implies none of that door size should be
-      exterior at all). Root cause not found — direction assignment
-      for already-classified openings was fixed this session (see
-      decisions.md, 2026-08-09), but the classification call itself
-      for these doors is still suspect. Needs its own investigation.
+- [x] Exterior/interior classification imprecision for small doors
+      (`floor2.dxf`/`floor3.dxf` w=90cm doors disagreeing with each
+      other and with the reference table) — root cause found and
+      fixed: the CAD exporter splits one physical exterior wall into
+      many separate `Wall_N_2` blocks with no explicit link between
+      them. `WallTopology.BuildWallRun` reconstructs the physical wall
+      run (nested convention only) for the exterior/interior decision;
+      path-finding and direction stay scoped to the opening's own host
+      block. Validated against the full 4-floor reference table: all
+      17 rows match exactly (53/53 openings, 0 false positives, 0
+      false negatives, 0 direction errors, 0 duplicates). See
+      decisions.md, 2026-08-10.
 - [ ] **Open:** `samples/floor1.dxf` and `samples/floor2.dxf` on disk
       no longer match the versions that were originally validated and
       committed (found 2026-08-09 — see decisions.md). Since

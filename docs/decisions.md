@@ -892,3 +892,94 @@ code. Not investigated further (no way to know why the files changed,
 since `samples/` has never been tracked for these edits) — flagged in
 plan.md as open, since it means historical reference numbers in this
 file no longer reproduce from the current on-disk samples as-is.
+
+---
+
+## 2026-08-09 — Session 10: root cause found for the w=90cm door
+misclassification — CAD exporter splits one exterior wall into many
+`Wall_N_2` blocks; three approaches tried, third one shipped
+
+**Context:** picking up the previous session's open item — floor2/floor3's
+w=90cm doors classified inconsistently, matching no reference table.
+User supplied a full reference table (4 floors merged, 17 rows) for
+rigorous validation this session, which made root-causing possible.
+
+**Approach 1 — exclude openings on a "notch" OVK edge (both endpoints
+reflex), rejected.** Traced the bad doors: both hit an OVK edge bounded
+by two reflex vertices (a re-entrant light-well corner). Implemented
+the exclusion, re-validated against the full reference table, and found
+it also excluded three genuinely correct windows (1.50×1.70, 1.60×2.50,
+1.60×2.48) that happen to reach the *same* edges as the bad doors —
+edge geometry alone cannot separate a genuine facade window from a
+connector door on the same wall. Reverted.
+
+**Investigation — structural comparison of a genuine door
+(`Wall_44_2`, 1.58×2.43, floor1) vs a bad connector door (`Wall_213_2`,
+floor3).** Neither block's own geometry touches OVK directly. The
+difference is what's one hop away: `Wall_44_2` neighbors `Wall_34_2`,
+a short pier 0.037m from the boundary, itself an interior link of a
+continuous wall; `Wall_213_2` neighbors `Wall_212_2`, a *different*
+wall system reached by crossing 3.65m of open interior space. Chain-
+following (walk through same-node, same-direction neighbors, stop at a
+real ~90° turn) confirmed: `Wall_44_2`'s chain is 5 blocks, 14.60m,
+terminating at two genuine corners, including a block
+(`Wall_26_2`) with 10.55m of its own geometry lying directly on OVK.
+`Wall_213_2`'s chain is a single isolated block — every neighbor is
+orthogonal, no collinear continuation exists at all.
+
+**Approach 2 — reconstruct the wall run (`WallTopology.BuildWallRun`)
+and gate + path-find on the whole run's node union, over-corrected.**
+Implemented: walk outward through collinear same-orientation neighbor
+blocks (reusing the existing `MaxCollinearDeviationDeg` constant),
+gate on whether any block in the run has a segment lying on the
+*finite* OVK edge (not just its infinite line — an early version of
+this check had a bug there, caught before shipping). This correctly
+recovered the previously-missing 1.58×2.43 door. But validating against
+the full reference table surfaced 8 new mismatches: 5 false-positive
+1.10×2.10 doors and 3 wrong direction assignments (0.40×2.46, 1.60×2.05).
+Root-caused via full decision-path traces using the real pipeline
+internals: `FindExteriorOvkPaths`/`AssignOvkEdgeIndex`, once fed the
+*entire* run's node union (sometimes 7 blocks / 81 nodes), treat every
+node as an equally valid trace origin — including nodes from blocks the
+opening never touches, several hops/rooms away. A false-positive door's
+"genuine OVK touch" belonged to an unrelated block in the same
+(correctly-reconstructed) run; a wrong-direction window's vote was
+decided by which edge the run's *shape* happened to have more nodes
+near, not which edge was nearest that specific window.
+
+**Approach 3 — shipped. Keep `BuildWallRun` for the gate only; scope
+path-finding to the opening's own host block.** Design-reviewed against
+4 candidate locality definitions (host block only; host block +
+hop-limited continuation; nearest run nodes by graph/physical distance;
+projection onto the run) before implementing. Hop-limited and distance-
+based approaches were rejected on structural grounds, not just
+untested: the genuine door's real match and two of the false positives'
+bad matches are at the *identical* hop distance (1), so no fixed radius
+can separate them. Tested "host block only" empirically first (read-only
+diagnostic, no code change) against all 8 mismatches plus 5 other
+currently-correct multi-block cases: fixed all 8, zero regressions —
+because `FindExteriorOvkPaths`'s own collinear trace already walks the
+full graph regardless of block ownership, so the run's extra nodes were
+never needed for reachability, only for (over-)voting. Implemented:
+`ExtractOpeningsTouchingOvk` still calls `BuildWallRun` and gates on
+`OwnsGenuineOvkSegment` unchanged, but passes `FindHostWallNodes` (the
+opening's own block) — not `run.Nodes` — into `FindExteriorOvkPaths`.
+`FindExteriorOvkPaths`, `AssignOvkEdgeIndex`, and the Archicad/top-level
+branch are byte-unchanged.
+
+**Validated:** all 17 rows of the reference table match exactly —
+53/53 openings, 0 false positives, 0 false negatives, 0 direction
+errors, 0 duplicates. Wall lengths/area/corner counts per floor
+unchanged from pre-session baseline (this fix only touches opening
+classification). `example.dxf` (Archicad convention) output confirmed
+byte-identical before and after.
+
+**Process note:** most of this session was throwaway diagnostic
+tooling (`DebugTrace.cs`, extra `Program.cs` command branches) built to
+get real numbers at every step rather than reason from assumption —
+removed after the fix was validated; `git diff` on the shipped commit
+touches only `FloorProcessor.cs`/`WallTopology.cs`, no dead code left
+from the two rejected approaches.
+
+**Shipped:** branch `fix/exterior-opening-classification-host-wall-topology`,
+merged to `main`.

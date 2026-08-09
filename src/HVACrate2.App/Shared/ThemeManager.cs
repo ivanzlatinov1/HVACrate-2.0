@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace HVACrate2.App;
+namespace HVACrate2.App.Shared;
 
 public static class ThemeManager
 {
@@ -11,7 +11,7 @@ public static class ThemeManager
     public static void SetTheme(bool dark)
     {
         IsDark = dark;
-        string source = dark ? "Resources/Theme.Dark.xaml" : "Resources/Theme.Light.xaml";
+        string source = dark ? "Shared/Theme.Dark.xaml" : "Shared/Theme.Light.xaml";
 
         var dictionaries = Application.Current.Resources.MergedDictionaries;
         var themeDict = dictionaries.FirstOrDefault(d =>

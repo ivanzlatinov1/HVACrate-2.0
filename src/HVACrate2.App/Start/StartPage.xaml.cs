@@ -1,7 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace HVACrate2.App.Pages;
+using HVACrate2.App.Projects;
+using HVACrate2.App.Instructions;
+
+namespace HVACrate2.App.Start;
 
 public partial class StartPage : Page
 {

@@ -1,8 +1,9 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using HVACrate2.App.Start;
 
-namespace HVACrate2.App.Pages;
+namespace HVACrate2.App.Instructions;
 
 public partial class InstructionsPage : Page
 {

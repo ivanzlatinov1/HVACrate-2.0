@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 
-namespace HVACrate2.App.ViewModels;
+namespace HVACrate2.App.Work;
 
 public sealed class FloorRowViewModel : INotifyPropertyChanged
 {

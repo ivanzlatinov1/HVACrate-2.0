@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
 
-namespace HVACrate2.App.Controls;
+namespace HVACrate2.App.Work;
 
 public partial class CompassControl : UserControl
 {

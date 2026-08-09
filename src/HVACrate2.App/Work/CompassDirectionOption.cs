@@ -1,4 +1,4 @@
-namespace HVACrate2.App.ViewModels;
+namespace HVACrate2.App.Work;
 
 public sealed record CompassDirectionOption(string Label, double Degrees)
 {

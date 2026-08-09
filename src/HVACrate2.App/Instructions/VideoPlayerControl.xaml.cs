@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace HVACrate2.App.Controls;
+namespace HVACrate2.App.Instructions;
 
 public partial class VideoPlayerControl : UserControl
 {

@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace HVACrate2.App.ViewModels;
+namespace HVACrate2.App.Projects;
 
 /// <summary>In-memory list of projects for the current app session — not persisted across restarts.</summary>
 public static class ProjectStore

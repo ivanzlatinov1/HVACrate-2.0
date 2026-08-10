@@ -16,4 +16,9 @@ public partial class MainWindow : Window
     {
         ThemeManager.SetTheme(ThemeToggle.IsChecked == true);
     }
+
+    private void OnLanguageToggleClick(object sender, RoutedEventArgs e)
+    {
+        LocalizationManager.SetLanguage(LanguageToggle.IsChecked == true);
+    }
 }

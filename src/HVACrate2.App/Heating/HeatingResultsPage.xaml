@@ -13,7 +13,7 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
+            <Button Content="{DynamicResource Str_Back}" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
             <TextBlock x:Name="TitleText" Text="Results" FontSize="26" FontWeight="Bold"
@@ -26,7 +26,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Margin="0,0,0,20">
-                            <TextBlock Text="{Binding FloorNumber, StringFormat='Floor {0}'}"
+                            <TextBlock Text="{Binding FloorLabel}"
                                        FontSize="16" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimaryBrush}"
                                        Margin="0,0,0,8" />

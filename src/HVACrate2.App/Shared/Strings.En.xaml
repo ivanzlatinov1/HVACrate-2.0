@@ -1,0 +1,115 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- Shared -->
+    <sys:String x:Key="Str_Back">&#8592; Back</sys:String>
+    <sys:String x:Key="Str_ThemeDark">Dark mode</sys:String>
+    <sys:String x:Key="Str_ThemeLight">Light mode</sys:String>
+    <sys:String x:Key="Str_FloorLabel">Floor {0}</sys:String>
+    <sys:String x:Key="Str_Err_AtLeastOneFloor">At least one floor is required.</sys:String>
+
+    <!-- Start page -->
+    <sys:String x:Key="Str_Start_Subtitle">Automated thermal-performance data extraction from DXF drawings</sys:String>
+    <sys:String x:Key="Str_Start_CurrentProject">Current project: {0}</sys:String>
+    <sys:String x:Key="Str_Start_NoProject">No project selected — start with Project Management.</sys:String>
+    <sys:String x:Key="Str_Start_ProjectManagement">Project Management</sys:String>
+    <sys:String x:Key="Str_Start_EnergyEfficiency">Energy Efficiency</sys:String>
+    <sys:String x:Key="Str_Start_FloorHeating">Floor Heating</sys:String>
+    <sys:String x:Key="Str_Start_Instructions">Instructions</sys:String>
+
+    <!-- Projects page -->
+    <sys:String x:Key="Str_Projects_Title">Projects</sys:String>
+    <sys:String x:Key="Str_Projects_Create">Create</sys:String>
+    <sys:String x:Key="Str_Projects_NamePlaceholder">New project name...</sys:String>
+    <sys:String x:Key="Str_Projects_Empty">No projects yet — create one above to get started.</sys:String>
+    <sys:String x:Key="Str_Projects_FloorsCreated"> floor(s) · created </sys:String>
+    <sys:String x:Key="Str_Projects_Open">Open</sys:String>
+    <sys:String x:Key="Str_Projects_Delete">Delete</sys:String>
+    <sys:String x:Key="Str_Projects_DeleteConfirmMessage">Delete project "{0}"? This only removes it from the list — no files are deleted.</sys:String>
+    <sys:String x:Key="Str_Projects_DeleteConfirmTitle">Delete project</sys:String>
+
+    <!-- Work page -->
+    <sys:String x:Key="Str_Work_TitlePrefix">Floors — </sys:String>
+    <sys:String x:Key="Str_Work_ChooseDxf">Choose DXF...</sys:String>
+    <sys:String x:Key="Str_Work_NoFileSelected">No file selected</sys:String>
+    <sys:String x:Key="Str_Work_Height">Height (m)</sys:String>
+    <sys:String x:Key="Str_Work_Apartments">Apartments</sys:String>
+    <sys:String x:Key="Str_Work_UpDirection">Up direction</sys:String>
+    <sys:String x:Key="Str_Work_Remove">Remove</sys:String>
+    <sys:String x:Key="Str_Work_AddFloor">+ Add floor</sys:String>
+    <sys:String x:Key="Str_Work_ExtractPreview">Extract &amp; Preview</sys:String>
+    <sys:String x:Key="Str_Work_Err_ChooseDxf">Floor {0}: choose a DXF file first.</sys:String>
+    <sys:String x:Key="Str_Work_Err_Height">Floor {0}: enter a valid height in meters.</sys:String>
+    <sys:String x:Key="Str_Work_Err_Apartments">Floor {0}: enter a valid number of apartments.</sys:String>
+    <sys:String x:Key="Str_Work_Err_Extraction">Extraction failed: {0}</sys:String>
+
+    <!-- Compass directions -->
+    <sys:String x:Key="Str_Dir_North">North</sys:String>
+    <sys:String x:Key="Str_Dir_NorthEast">North-East</sys:String>
+    <sys:String x:Key="Str_Dir_East">East</sys:String>
+    <sys:String x:Key="Str_Dir_SouthEast">South-East</sys:String>
+    <sys:String x:Key="Str_Dir_South">South</sys:String>
+    <sys:String x:Key="Str_Dir_SouthWest">South-West</sys:String>
+    <sys:String x:Key="Str_Dir_West">West</sys:String>
+    <sys:String x:Key="Str_Dir_NorthWest">North-West</sys:String>
+
+    <!-- Preview page -->
+    <sys:String x:Key="Str_Preview_Title">Review before writing Excel</sys:String>
+    <sys:String x:Key="Str_Preview_Area">Area</sys:String>
+    <sys:String x:Key="Str_Preview_Volume">Volume</sys:String>
+    <sys:String x:Key="Str_Preview_Perimeter">Perimeter</sys:String>
+    <sys:String x:Key="Str_Preview_Corners">Corners (n)</sys:String>
+    <sys:String x:Key="Str_Preview_WallLengths">Wall lengths by direction</sys:String>
+    <sys:String x:Key="Str_Preview_Openings">Windows / doors (width×height — count by direction)</sys:String>
+    <sys:String x:Key="Str_Preview_Confirm">Confirm &amp; Write Excel</sys:String>
+    <sys:String x:Key="Str_Preview_Download">Download filled Excel</sys:String>
+    <sys:String x:Key="Str_Preview_Err_Template">Excel template not found alongside the app (Assets/Template.xlsx).</sys:String>
+    <sys:String x:Key="Str_Preview_Err_Write">Writing Excel failed: {0}</sys:String>
+    <sys:String x:Key="Str_Preview_Success">Done — {0} floor(s) written. Download the filled Excel file below.</sys:String>
+    <sys:String x:Key="Str_Preview_Err_NoFile">No filled file to download — click Confirm &amp; Write Excel again.</sys:String>
+
+    <!-- Floor Heating page -->
+    <sys:String x:Key="Str_Heating_TitlePrefix">Floor Heating — </sys:String>
+    <sys:String x:Key="Str_Heating_RemoveFloor">Remove floor</sys:String>
+    <sys:String x:Key="Str_Heating_RemoveRoom">Remove room</sys:String>
+    <sys:String x:Key="Str_Heating_AddRoom">+ Add room</sys:String>
+    <sys:String x:Key="Str_Heating_AddFloor">+ Add floor</sys:String>
+    <sys:String x:Key="Str_Heating_Calculate">Calculate &amp; View Results</sys:String>
+    <sys:String x:Key="Str_Heating_Err_Field">Floor {0}, Room {1}: enter a valid {2}.</sys:String>
+
+    <!-- Heating results page -->
+    <sys:String x:Key="Str_HeatingResults_TitlePrefix">Floor Heating — Results — </sys:String>
+
+    <!-- Instructions page -->
+    <sys:String x:Key="Str_Instr_Heading1">1. Export the .dxf file from AutoCAD</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_1">1. Open AutoCAD's project of the building</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_2">2. Go to the floor you want to calculate energy efficiency</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_3a">3. Create "OVK" layer </sys:String>
+    <sys:String x:Key="Str_Instr_Mandatory">(mandatory)</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_4">4. Enclose the floor with the OVK layer</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_5">5. Select the whole floor</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_6">6. Type "WBlock" in the command menu</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_7">7. Select starting point (one of edges of the layer)</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_8">8. Choose a destination path for the file</sys:String>
+    <sys:String x:Key="Str_Instr_Step1_9a">9. Select the file with extension ".dxf" </sys:String>
+    <sys:String x:Key="Str_Instr_Heading2">2. Use HVACrate 2.0 to extract the Excel result</sys:String>
+    <sys:String x:Key="Str_Instr_Step2_1">1. Open HVACrate 2.0</sys:String>
+    <sys:String x:Key="Str_Instr_Step2_2">2. Create a new project or add another floor to the project you want to modify</sys:String>
+    <sys:String x:Key="Str_Instr_Step2_3">3. Import the created .dxf file</sys:String>
+    <sys:String x:Key="Str_Instr_Step2_4">4. Select height and direction of the current floor</sys:String>
+    <sys:String x:Key="Str_Instr_Step2_5">5. After all the floors are submitted, click the button for the exported excel file</sys:String>
+
+    <!-- Video player -->
+    <sys:String x:Key="Str_Video_Loading">Loading video...</sys:String>
+    <sys:String x:Key="Str_Video_Missing">Video not available.</sys:String>
+    <sys:String x:Key="Str_Video_Failed">Couldn't load the video — check your internet connection and try again.</sys:String>
+    <sys:String x:Key="Str_Video_Play">Play</sys:String>
+    <sys:String x:Key="Str_Video_Pause">Pause</sys:String>
+    <sys:String x:Key="Str_Video_Restart">Restart</sys:String>
+
+    <!-- Crash dialog -->
+    <sys:String x:Key="Str_Crash_Message">Something went wrong and the action couldn't complete:&#10;&#10;{0}&#10;&#10;Details were saved to:&#10;{1}</sys:String>
+    <sys:String x:Key="Str_Crash_Title">HVACrate — unexpected error</sys:String>
+
+</ResourceDictionary>

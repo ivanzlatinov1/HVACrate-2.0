@@ -1195,3 +1195,102 @@ requested but never given formulas/columns, and whether floor heating
 needs any Excel output (vs. staying in-app-only, unlike Energy
 Efficiency) is undecided. Picked up again in a future session once the
 user has the missing reference material.
+
+---
+
+## 2026-08-10 — Language toggle (English/Bulgarian): reused
+`ThemeManager`'s pattern exactly; formula notation stays fixed by
+design, not an oversight
+
+**Context:** branched `feature/language-toggle` off `feature/floor-heating`
+(not `main`) for a persistent EN/BG toggle next to the existing theme
+toggle. Sized the scope first (grepped every hardcoded `Text=`/`Content=`
+in `HVACrate2.App` — ~80 XAML occurrences across 9 files, ~30 code-behind
+occurrences across 8 files) before entering plan mode, then ran an
+`AskUserQuestion` round to settle two real scope forks before writing
+code.
+
+**Formula/domain notation stays fixed in both languages — explicit user
+decision, not an oversight.** Rог, Rод, r_пд, Qc, Qпт, Qдол, δ-symbols,
+room labels ("пом.01"), and the wall/opening compass-direction letters
+`HVACrate2.Core` already produces (С/И/Ю/З/etc.) are calculation
+notation, not UI prose — and the underlying Excel template is always
+Bulgarian regardless of app language, so translating the app's own
+formula labels away from what the template/reference sheets use would
+make cross-checking harder, not easier. The compass *dial* widget's
+fixed N/E/S/W-style labels (`CompassControl.xaml`) were treated the same
+way by the same reasoning, though this specific control wasn't asked
+about directly. Only the Work page's direction *dropdown*
+(`CompassDirectionOption`) translates, since that's a UI input control
+a user reads and picks from, not a calculation result.
+
+**Instructions page's full step-by-step prose is in scope, not
+deferred** — the one place the user explicitly asked for more than
+short UI chrome. All 14 numbered steps and both part headings across
+both languages, plus the "(mandatory)" emphasis runs, translated.
+
+**Mechanism — reused `Shared/ThemeManager.cs`'s pattern byte-for-byte,
+not a new architecture.** `ThemeManager` already solved "a setting that
+must apply live, everywhere, without restarting the app": swap a merged
+`ResourceDictionary`, everything themed uses `DynamicResource` so it
+rebinds live. `LocalizationManager` does the same with
+`Strings.En.xaml`/`Strings.Bg.xaml` (`sys:String` entries, same
+convention `Theme.Light.xaml` already used for `TitleShadowDepth`)
+instead of brushes. `Shared/Loc.cs` is a two-line static helper
+(`Application.Current.FindResource(key)` + a `string.Format` overload)
+for the cases `DynamicResource` can't reach: dynamically-built text
+(`"Floors — " + project.Name`), `MessageBox` content, and
+`CompassDirectionOption.ToString()`.
+
+**Real technical snag found and solved: `StringFormat` can't be
+`DynamicResource`-bound.** Every "Floor {0}" label
+(`WorkPage`/`PreviewPage`/`FloorHeatingPage`/`HeatingResultsPage`) used
+`Text="{Binding FloorNumber, StringFormat='Floor {0}'}"` — but
+`StringFormat` is evaluated at XAML parse time, not a runtime dependency
+property, so embedding a translated word inside it can't rebind live no
+matter what. Fixed uniformly by adding a computed `FloorLabel` property
+(`Loc.Get("Str_FloorLabel", FloorNumber)`) to every affected view model
+(`FloorRowViewModel`, `PreviewFloorViewModel`, `HeatingFloorViewModel`)
+and binding `Text="{Binding FloorLabel}"` instead — same pattern already
+used for `HeatingRoomViewModel.RoomLabel` ("пом.01"). Where the source
+view model already raises `PropertyChanged` on the underlying number
+(`HeatingFloorViewModel`), the setter now also raises `FloorLabel`; where
+it didn't (`FloorRowViewModel`'s `FloorNumber` was a bare
+get/set with no `Raise()` at all — a pre-existing quirk, not something
+this session introduced or was asked to fix), adding the computed
+property doesn't regress anything since nothing live-updated it before
+either.
+
+**Scope boundary, stated explicitly rather than silently accepted:**
+code-behind-computed text (page titles like `"Floors — {ProjectName}"`,
+error/status messages) reflects whatever language is active *at the
+moment it's set* — always correct for messages (generated fresh per
+click) and for titles set in a page's constructor (every page in this
+app is already reconstructed fresh on navigation, per the project's
+existing convention), but a language toggle mid-page won't retroactively
+rewrite already-computed title text without navigating away and back.
+Matches `ThemeChanged`'s own actual behavior today — it's declared but
+nothing subscribes to it, since `DynamicResource` already makes that
+unnecessary for anything XAML-bound; `LocalizationManager.LanguageChanged`
+was added for the same parity/future-use reason and is equally unused
+right now.
+
+**Repeated near-duplicate error messages unified into one parameterized
+key.** `FloorHeatingPage`'s seven per-field validation messages ("enter
+a valid δбет." / "δзам-под." / ... / "Qпт.") collapsed into one
+`Str_Heating_Err_Field = "Floor {0}, Room {1}: enter a valid {2}."`,
+with the fixed symbol name passed as the third argument — avoids seven
+near-identical resource keys differing only in one embedded symbol.
+
+**Verified:** `dotnet build` clean (0 warnings beyond the pre-existing
+test-scaffold one) after every stage; re-grepped every `Text=`/`Content=`
+in `HVACrate2.App` after finishing to confirm the only hardcoded strings
+left are the intentional fixed ones (formula notation, "HVACrate 2.0",
+dead `TitleText` XAML defaults immediately overwritten in every page's
+constructor, compass dial letters, and lone punctuation-only `Run`s).
+App launched and left running for the user to click through directly —
+no UI-automation tooling used this session either, matching the Floor
+Heating session's approach.
+
+**Merged into `feature/floor-heating`**, not `main` — the branch point,
+since `feature/floor-heating` itself is still unmerged.

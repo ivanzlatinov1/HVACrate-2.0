@@ -14,7 +14,7 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
+            <Button Content="{DynamicResource Str_Back}" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
             <TextBlock x:Name="TitleText" Text="Floor Heating" FontSize="26" FontWeight="Bold"
@@ -31,10 +31,10 @@
                                     BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,14">
                                 <StackPanel>
                                     <DockPanel Margin="0,0,0,12">
-                                        <Button Content="Remove floor" Style="{StaticResource SecondaryButtonStyle}"
+                                        <Button Content="{DynamicResource Str_Heating_RemoveFloor}" Style="{StaticResource SecondaryButtonStyle}"
                                                 Padding="10,6" FontSize="12" DockPanel.Dock="Right"
                                                 Tag="{Binding}" Click="OnRemoveFloorClick" />
-                                        <TextBlock Text="{Binding FloorNumber, StringFormat='Floor {0}'}"
+                                        <TextBlock Text="{Binding FloorLabel}"
                                                    FontSize="18" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource TextPrimaryBrush}" />
                                     </DockPanel>
@@ -46,7 +46,7 @@
                                                         BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,10">
                                                     <StackPanel>
                                                         <DockPanel Margin="0,0,0,10">
-                                                            <Button Content="Remove room" Style="{StaticResource SecondaryButtonStyle}"
+                                                            <Button Content="{DynamicResource Str_Heating_RemoveRoom}" Style="{StaticResource SecondaryButtonStyle}"
                                                                     Padding="8,4" FontSize="11" DockPanel.Dock="Right"
                                                                     Tag="{Binding}" Click="OnRemoveRoomClick" />
                                                             <TextBlock Text="{Binding RoomNumber, StringFormat='Room {0}'}"
@@ -116,7 +116,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
-                                    <Button Content="+ Add room" Style="{StaticResource SecondaryButtonStyle}"
+                                    <Button Content="{DynamicResource Str_Heating_AddRoom}" Style="{StaticResource SecondaryButtonStyle}"
                                             HorizontalAlignment="Left" Padding="12,6" FontSize="12"
                                             Tag="{Binding}" Click="OnAddRoomClick" />
                                 </StackPanel>
@@ -125,7 +125,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Button Content="+ Add floor" Style="{StaticResource SecondaryButtonStyle}"
+                <Button Content="{DynamicResource Str_Heating_AddFloor}" Style="{StaticResource SecondaryButtonStyle}"
                         HorizontalAlignment="Left" Padding="14,8"
                         Click="OnAddFloorClick" Margin="0,0,0,20" />
             </StackPanel>
@@ -134,7 +134,7 @@
         <StackPanel Grid.Row="2" Margin="0,16,0,0">
             <TextBlock x:Name="StatusText" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,10"
                        TextWrapping="Wrap" Visibility="Collapsed" />
-            <Button Content="Calculate &amp; View Results" Style="{StaticResource NavButtonStyle}"
+            <Button Content="{DynamicResource Str_Heating_Calculate}" Style="{StaticResource NavButtonStyle}"
                     Padding="20,12" HorizontalAlignment="Left" Click="OnCalculateClick" />
         </StackPanel>
     </Grid>

@@ -14,10 +14,10 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0" Margin="0,0,0,20">
-            <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
+            <Button Content="{DynamicResource Str_Back}" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
-            <TextBlock Text="Instructions" FontSize="26" FontWeight="Bold"
+            <TextBlock Text="{DynamicResource Str_Start_Instructions}" FontSize="26" FontWeight="Bold"
                        Foreground="{DynamicResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
         </DockPanel>
@@ -26,7 +26,7 @@
             <StackPanel MaxWidth="820" HorizontalAlignment="Center">
 
                 <!-- Part 1: exporting the DXF from AutoCAD -->
-                <TextBlock Text="1. Export the .dxf file from AutoCAD" FontSize="20" FontWeight="SemiBold"
+                <TextBlock Text="{DynamicResource Str_Instr_Heading1}" FontSize="20" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12" />
 
                 <controls:VideoPlayerControl x:Name="Video1" Height="380" Margin="0,0,0,16" />
@@ -34,24 +34,24 @@
                 <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="10" Padding="20"
                         BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,32">
                     <StackPanel>
-                        <TextBlock Text="1. Open AutoCAD's project of the building" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="2. Go to the floor you want to calculate energy efficiency" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step1_1}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step1_2}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
                         <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap">
-                            <Run Text="3. Create &quot;OVK&quot; layer " /><Run Text="(mandatory)" FontWeight="SemiBold" /><Run Text="." />
+                            <Run Text="{DynamicResource Str_Instr_Step1_3a}" /><Run Text="{DynamicResource Str_Instr_Mandatory}" FontWeight="SemiBold" /><Run Text="." />
                         </TextBlock>
-                        <TextBlock Text="4. Enclose the floor with the OVK layer" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="5. Select the whole floor" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="6. Type &quot;WBlock&quot; in the command menu" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="7. Select starting point (one of edges of the layer)" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="8. Choose a destination path for the file" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step1_4}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step1_5}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step1_6}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step1_7}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step1_8}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
                         <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap">
-                            <Run Text="9. Select the file with extension &quot;.dxf&quot; " /><Run Text="(mandatory)" FontWeight="SemiBold" /><Run Text="." />
+                            <Run Text="{DynamicResource Str_Instr_Step1_9a}" /><Run Text="{DynamicResource Str_Instr_Mandatory}" FontWeight="SemiBold" /><Run Text="." />
                         </TextBlock>
                     </StackPanel>
                 </Border>
 
                 <!-- Part 2: using HVACrate 2.0 -->
-                <TextBlock Text="2. Use HVACrate 2.0 to extract the Excel result" FontSize="20" FontWeight="SemiBold"
+                <TextBlock Text="{DynamicResource Str_Instr_Heading2}" FontSize="20" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12" />
 
                 <controls:VideoPlayerControl x:Name="Video2" Height="380" Margin="0,0,0,16" />
@@ -59,11 +59,11 @@
                 <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="10" Padding="20"
                         BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,24">
                     <StackPanel>
-                        <TextBlock Text="1. Open HVACrate 2.0" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="2. Create a new project or add another floor to the project you want to modify" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="3. Import the created .dxf file" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="4. Select height and direction of the current floor" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
-                        <TextBlock Text="5. After all the floors are submitted, click the button for the exported excel file" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step2_1}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step2_2}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step2_3}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step2_4}" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8" TextWrapping="Wrap" />
+                        <TextBlock Text="{DynamicResource Str_Instr_Step2_5}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 

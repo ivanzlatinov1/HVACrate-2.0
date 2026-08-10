@@ -7,6 +7,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Shared/Theme.Light.xaml" />
+                <ResourceDictionary Source="Shared/Strings.En.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <Style x:Key="NavButtonStyle" TargetType="Button">

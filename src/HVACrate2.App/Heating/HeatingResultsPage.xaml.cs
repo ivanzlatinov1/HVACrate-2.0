@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using HVACrate2.App.Projects;
+using HVACrate2.App.Shared;
 
 namespace HVACrate2.App.Heating;
 
@@ -9,7 +10,7 @@ public partial class HeatingResultsPage : Page
     public HeatingResultsPage(ProjectRecord project)
     {
         InitializeComponent();
-        TitleText.Text = $"Floor Heating — Results — {project.Name}";
+        TitleText.Text = $"{Loc.Get("Str_HeatingResults_TitlePrefix")}{project.Name}";
         ResultsList.ItemsSource = project.HeatingFloors;
     }
 

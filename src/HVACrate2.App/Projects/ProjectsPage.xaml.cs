@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using HVACrate2.App.Shared;
 using HVACrate2.App.Start;
 
 namespace HVACrate2.App.Projects;
@@ -51,8 +52,8 @@ public partial class ProjectsPage : Page
             return;
 
         var result = MessageBox.Show(
-            $"Delete project \"{project.Name}\"? This only removes it from the list — no files are deleted.",
-            "Delete project", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            Loc.Get("Str_Projects_DeleteConfirmMessage", project.Name),
+            Loc.Get("Str_Projects_DeleteConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         if (result == MessageBoxResult.Yes)
             ProjectStore.DeleteProject(project);

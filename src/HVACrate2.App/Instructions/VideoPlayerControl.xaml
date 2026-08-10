@@ -10,7 +10,7 @@
                           LoadedBehavior="Manual" UnloadedBehavior="Manual"
                           MediaEnded="OnMediaEnded" MediaFailed="OnMediaFailed" Visibility="Collapsed" />
 
-            <TextBlock x:Name="LoadingText" Text="Loading video..." Foreground="#AAAAAA" FontSize="14"
+            <TextBlock x:Name="LoadingText" Text="{DynamicResource Str_Video_Loading}" Foreground="#AAAAAA" FontSize="14"
                        HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
 
             <TextBlock x:Name="MissingText" Foreground="#AAAAAA" FontSize="14"
@@ -21,10 +21,10 @@
             <StackPanel x:Name="Controls" Orientation="Horizontal"
                         HorizontalAlignment="Center" VerticalAlignment="Bottom"
                         Margin="0,0,0,12" Visibility="Collapsed">
-                <Button x:Name="PlayPauseButton" Content="Play" Width="70" Padding="0,6"
+                <Button x:Name="PlayPauseButton" Content="{DynamicResource Str_Video_Play}" Width="70" Padding="0,6"
                         Click="OnPlayPauseClick" Margin="0,0,8,0"
                         Background="#2A2A2A" Foreground="White" BorderThickness="0" Cursor="Hand" />
-                <Button x:Name="RestartButton" Content="Restart" Width="70" Padding="0,6"
+                <Button x:Name="RestartButton" Content="{DynamicResource Str_Video_Restart}" Width="70" Padding="0,6"
                         Click="OnRestartClick"
                         Background="#2A2A2A" Foreground="White" BorderThickness="0" Cursor="Hand" />
             </StackPanel>

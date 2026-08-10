@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using HVACrate2.App.Preview;
 using HVACrate2.App.Projects;
+using HVACrate2.App.Shared;
 using HVACrate2.App.Start;
 using HVACrate2.Core;
 using HVACrate2.Core.Models;
@@ -21,7 +22,7 @@ public partial class WorkPage : Page
     {
         InitializeComponent();
         _project = project;
-        TitleText.Text = $"Floors — {project.Name}";
+        TitleText.Text = $"{Loc.Get("Str_Work_TitlePrefix")}{project.Name}";
         FloorsList.ItemsSource = _floors;
         AddFloor();
     }
@@ -55,7 +56,7 @@ public partial class WorkPage : Page
         {
             if (_floors.Count <= 1)
             {
-                ShowError("At least one floor is required.");
+                ShowError(Loc.Get("Str_Err_AtLeastOneFloor"));
                 return;
             }
             _floors.Remove(row);
@@ -93,17 +94,17 @@ public partial class WorkPage : Page
         {
             if (row.DxfPath is null)
             {
-                ShowError($"Floor {row.FloorNumber}: choose a DXF file first.");
+                ShowError(Loc.Get("Str_Work_Err_ChooseDxf", row.FloorNumber));
                 return;
             }
             if (!row.TryGetHeightM(out double heightM))
             {
-                ShowError($"Floor {row.FloorNumber}: enter a valid height in meters.");
+                ShowError(Loc.Get("Str_Work_Err_Height", row.FloorNumber));
                 return;
             }
             if (!row.TryGetApartmentCount(out int apartmentCount))
             {
-                ShowError($"Floor {row.FloorNumber}: enter a valid number of apartments.");
+                ShowError(Loc.Get("Str_Work_Err_Apartments", row.FloorNumber));
                 return;
             }
             floorInputs.Add(new FloorInput
@@ -124,7 +125,7 @@ public partial class WorkPage : Page
         }
         catch (Exception ex)
         {
-            ShowError($"Extraction failed: {ex.Message}");
+            ShowError(Loc.Get("Str_Work_Err_Extraction", ex.Message));
             return;
         }
         finally

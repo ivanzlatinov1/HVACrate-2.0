@@ -14,10 +14,10 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
+            <Button Content="{DynamicResource Str_Back}" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
-            <TextBlock Text="Projects" FontSize="26" FontWeight="Bold"
+            <TextBlock Text="{DynamicResource Str_Projects_Title}" FontSize="26" FontWeight="Bold"
                        Foreground="{DynamicResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
         </DockPanel>
@@ -26,19 +26,19 @@
                 BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
                 Padding="16" Margin="0,0,0,20">
             <DockPanel>
-                <Button Content="Create" Style="{StaticResource SecondaryButtonStyle}"
+                <Button Content="{DynamicResource Str_Projects_Create}" Style="{StaticResource SecondaryButtonStyle}"
                         Padding="14,8" FontSize="14"
                         DockPanel.Dock="Right" Margin="12,0,0,0"
                         Click="OnCreateProjectClick" />
                 <TextBox x:Name="NewProjectNameBox" DockPanel.Dock="Left"
                          Padding="16,6,8,6" FontSize="14"
-                         Tag="New project name..." />
+                         Tag="{DynamicResource Str_Projects_NamePlaceholder}" />
             </DockPanel>
         </Border>
 
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <TextBlock x:Name="EmptyStateText" Text="No projects yet — create one above to get started."
+                <TextBlock x:Name="EmptyStateText" Text="{DynamicResource Str_Projects_Empty}"
                            Foreground="{DynamicResource TextSecondaryBrush}"
                            FontSize="14" HorizontalAlignment="Center" Margin="0,30,0,0"
                            Visibility="Collapsed" />
@@ -59,16 +59,16 @@
                                                    Foreground="{DynamicResource TextPrimaryBrush}" />
                                         <TextBlock Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,0">
                                             <Run Text="{Binding FloorCount, Mode=OneWay}" />
-                                            <Run Text=" floor(s) · created " />
+                                            <Run Text="{DynamicResource Str_Projects_FloorsCreated}" />
                                             <Run Text="{Binding CreatedAt, StringFormat='{}{0:d}', Mode=OneWay}" />
                                         </TextBlock>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Content="Open" Style="{StaticResource NavButtonStyle}"
+                                        <Button Content="{DynamicResource Str_Projects_Open}" Style="{StaticResource NavButtonStyle}"
                                                 Padding="16,8" FontSize="14"
                                                 Tag="{Binding}" Click="OnOpenProjectClick" Margin="0,0,10,0" />
-                                        <Button Content="Delete" Style="{StaticResource SecondaryButtonStyle}"
+                                        <Button Content="{DynamicResource Str_Projects_Delete}" Style="{StaticResource SecondaryButtonStyle}"
                                                 Padding="14,8" FontSize="14"
                                                 Tag="{Binding}" Click="OnDeleteProjectClick" />
                                     </StackPanel>

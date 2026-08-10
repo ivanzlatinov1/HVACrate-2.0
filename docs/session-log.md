@@ -686,3 +686,66 @@ request. Not in the original CLAUDE.md scope.
   being worked on per explicit user instruction ("Phase 4 and 5 will
   wait for now, as well as the tests").
 - `feature/floor-heating` not yet merged to `main`.
+
+---
+
+## 2026-08-10 — Session 13 (branch `feature/language-toggle`, merged
+into `feature/floor-heating`)
+
+**Context:** continuation of the same day's work. User confirmed Floor
+Heating (Session 12) needs more information before it can be finished,
+so that was left as-is, docs updated, and committed on
+`feature/floor-heating`. New task started from there: a persistent
+language toggle (English/Bulgarian) across every page.
+
+**Done:**
+
+- Committed Session 12's Floor Heating work (first slice) with docs on
+  `feature/floor-heating`.
+- Branched `feature/language-toggle` off `feature/floor-heating` per
+  explicit user correction — this session started the branch
+  proactively from the start, unlike Session 12 where the branch was
+  created only after the user pointed out the work had begun on `main`.
+- Sized the localization scope by grepping every hardcoded UI string
+  across `HVACrate2.App` before planning (~80 XAML + ~30 code-behind
+  occurrences), then entered plan mode and ran an `AskUserQuestion`
+  round to settle two forks: formula/domain notation (Rог, Rод, Qпт,
+  room labels, compass-direction letters) stays fixed in both
+  languages — recommended and confirmed; the Instructions page's full
+  step-by-step prose is in scope for this pass, not deferred — user
+  chose to include it now.
+- Implemented `Shared/LocalizationManager.cs` + `Shared/Loc.cs` +
+  `Shared/Strings.En.xaml`/`Strings.Bg.xaml`, reusing
+  `ThemeManager.cs`'s existing resource-dictionary-swap pattern
+  exactly rather than inventing a new mechanism. Added a second
+  `ToggleButton` next to the existing theme toggle in `MainWindow.xaml`.
+- Localized every page's UI chrome: Start, Project Management, Work +
+  Preview (Energy Efficiency flow), Floor Heating + its results page,
+  Instructions (full prose + both videos' controls), and the crash
+  dialog — see decisions.md for the full file-by-file breakdown.
+- Found and solved a real technical snag along the way: `StringFormat`
+  bindings (`"Floor {0}"`, used on four pages) can't be
+  `DynamicResource`-bound since `StringFormat` is parse-time, not a
+  runtime dependency property. Fixed by adding a computed `FloorLabel`
+  property to each affected view model instead, mirroring the
+  `RoomLabel` pattern already used for `HeatingRoomViewModel`.
+- Unified `FloorHeatingPage`'s seven near-duplicate per-field
+  validation messages into one parameterized resource key.
+- `dotnet build` clean after every stage; re-grepped every
+  `Text=`/`Content=` in the app afterward to confirm only the
+  intentionally-fixed strings remained. App launched and left running
+  for the user to click through both languages directly.
+- User approved after trying it live ("Very good, i like it").
+  Committed on `feature/language-toggle`, then merged into
+  `feature/floor-heating` (the branch point, since that branch is
+  itself still unmerged into `main`) per explicit user instruction.
+
+**Open for the next session:**
+
+- Floor Heating's own open items (Session 12) are unchanged — still
+  blocked on the user for the serpentine table and the Excel-output
+  question.
+- `feature/floor-heating` (now carrying both Session 12 and 13's work)
+  still not merged to `main`.
+- Everything else carried over from prior sessions (Phase 4 packaging,
+  Phase 5 polish, empty test scaffold) untouched.

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using HVACrate2.App.Projects;
+using HVACrate2.App.Shared;
 using HVACrate2.App.Start;
 using HVACrate2.Core.FloorHeating;
 using HVACrate2.Core.Models;
@@ -18,7 +19,7 @@ public partial class FloorHeatingPage : Page
     {
         InitializeComponent();
         _project = project;
-        TitleText.Text = $"Floor Heating — {project.Name}";
+        TitleText.Text = $"{Loc.Get("Str_Heating_TitlePrefix")}{project.Name}";
         FloorsList.ItemsSource = Floors;
         if (Floors.Count == 0)
             AddFloor();
@@ -65,7 +66,7 @@ public partial class FloorHeatingPage : Page
 
         if (Floors.Count <= 1)
         {
-            ShowError("At least one floor is required.");
+            ShowError(Loc.Get("Str_Err_AtLeastOneFloor"));
             return;
         }
         Floors.Remove(floor);
@@ -109,37 +110,37 @@ public partial class FloorHeatingPage : Page
             {
                 if (!room.TryGetDeltaBetM(out double deltaBet))
                 {
-                    ShowError($"Floor {floor.FloorNumber}, Room {room.RoomNumber}: enter a valid δбет.");
+                    ShowError(Loc.Get("Str_Heating_Err_Field", floor.FloorNumber, room.RoomNumber, "δбет"));
                     return;
                 }
                 if (!room.TryGetDeltaZamPodM(out double deltaZamPod))
                 {
-                    ShowError($"Floor {floor.FloorNumber}, Room {room.RoomNumber}: enter a valid δзам-под.");
+                    ShowError(Loc.Get("Str_Heating_Err_Field", floor.FloorNumber, room.RoomNumber, "δзам-под"));
                     return;
                 }
                 if (!room.TryGetDeltaTerM(out double deltaTer))
                 {
-                    ShowError($"Floor {floor.FloorNumber}, Room {room.RoomNumber}: enter a valid δтер.");
+                    ShowError(Loc.Get("Str_Heating_Err_Field", floor.FloorNumber, room.RoomNumber, "δтер"));
                     return;
                 }
                 if (!room.TryGetDeltaIzolM(out double deltaIzol))
                 {
-                    ShowError($"Floor {floor.FloorNumber}, Room {room.RoomNumber}: enter a valid δизол.");
+                    ShowError(Loc.Get("Str_Heating_Err_Field", floor.FloorNumber, room.RoomNumber, "δизол"));
                     return;
                 }
                 if (!room.TryGetDeltaPlochM(out double deltaPloch))
                 {
-                    ShowError($"Floor {floor.FloorNumber}, Room {room.RoomNumber}: enter a valid δплоч.");
+                    ShowError(Loc.Get("Str_Heating_Err_Field", floor.FloorNumber, room.RoomNumber, "δплоч"));
                     return;
                 }
                 if (!room.TryGetDeltaZamTavM(out double deltaZamTav))
                 {
-                    ShowError($"Floor {floor.FloorNumber}, Room {room.RoomNumber}: enter a valid δзам-таван.");
+                    ShowError(Loc.Get("Str_Heating_Err_Field", floor.FloorNumber, room.RoomNumber, "δзам-таван"));
                     return;
                 }
                 if (!room.TryGetQptW(out double qpt) || qpt <= 0)
                 {
-                    ShowError($"Floor {floor.FloorNumber}, Room {room.RoomNumber}: enter a valid Qпт.");
+                    ShowError(Loc.Get("Str_Heating_Err_Field", floor.FloorNumber, room.RoomNumber, "Qпт"));
                     return;
                 }
 

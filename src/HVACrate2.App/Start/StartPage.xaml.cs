@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using HVACrate2.App.Heating;
 using HVACrate2.App.Instructions;
 using HVACrate2.App.Projects;
+using HVACrate2.App.Shared;
 using HVACrate2.App.Work;
 
 namespace HVACrate2.App.Start;
@@ -19,8 +20,8 @@ public partial class StartPage : Page
         EnergyEfficiencyButton.IsEnabled = hasProject;
         FloorHeatingButton.IsEnabled = hasProject;
         CurrentProjectText.Text = hasProject
-            ? $"Current project: {current!.Name}"
-            : "No project selected — start with Project Management.";
+            ? Loc.Get("Str_Start_CurrentProject", current!.Name)
+            : Loc.Get("Str_Start_NoProject");
     }
 
     private void OnProjectManagementClick(object sender, RoutedEventArgs e)

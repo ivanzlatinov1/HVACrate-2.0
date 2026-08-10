@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using HVACrate2.App.Shared;
 
 namespace HVACrate2.App.Work;
 
@@ -11,7 +12,14 @@ public sealed class FloorRowViewModel : INotifyPropertyChanged
     private void Raise([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    public int FloorNumber { get; set; }
+    private int _floorNumber;
+    public int FloorNumber
+    {
+        get => _floorNumber;
+        set { _floorNumber = value; Raise(); Raise(nameof(FloorLabel)); }
+    }
+
+    public string FloorLabel => Loc.Get("Str_FloorLabel", FloorNumber);
 
     private string? _dxfPath;
     public string? DxfPath
@@ -25,7 +33,7 @@ public sealed class FloorRowViewModel : INotifyPropertyChanged
         }
     }
 
-    public string DxfFileName => DxfPath is null ? "No file selected" : Path.GetFileName(DxfPath);
+    public string DxfFileName => DxfPath is null ? Loc.Get("Str_Work_NoFileSelected") : Path.GetFileName(DxfPath);
 
     private string _heightText = "";
     public string HeightText

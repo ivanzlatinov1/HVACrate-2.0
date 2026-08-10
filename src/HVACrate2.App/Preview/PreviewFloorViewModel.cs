@@ -1,3 +1,4 @@
+using HVACrate2.App.Shared;
 using HVACrate2.Core.Models;
 
 namespace HVACrate2.App.Preview;
@@ -8,6 +9,8 @@ public sealed class PreviewFloorViewModel
     public required int FloorNumber { get; init; }
     public required FloorResult Result { get; init; }
     public required double NorthDeg { get; init; }
+
+    public string FloorLabel => Loc.Get("Str_FloorLabel", FloorNumber);
 
     public string AreaText => $"{Result.AreaM2:0.##} m²";
     public string VolumeText => $"{Result.VolumeM3:0.##} m³";

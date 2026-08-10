@@ -203,3 +203,29 @@ yet added as files anywhere in the repo).
       columns were never supplied, and it's unclear whether floor
       heating needs any Excel output or stays in-app-only. Explicitly
       deferred to a future session per the user.
+
+## Phase 7 — Language toggle (English / Bulgarian), branch
+`feature/language-toggle` off `feature/floor-heating`
+
+- [x] Persistent language toggle next to the existing theme toggle in
+      `MainWindow.xaml` — switches every page's UI chrome between
+      English and Bulgarian and back, live, without navigating away.
+      `Shared/LocalizationManager.cs` mirrors `ThemeManager.cs`'s
+      resource-dictionary-swap pattern exactly (`Strings.En.xaml` /
+      `Strings.Bg.xaml`); `Shared/Loc.cs` covers the code-behind cases
+      `DynamicResource` can't reach (dynamic strings, `MessageBox`
+      content, `ToString()` overrides). See decisions.md, 2026-08-10
+      (Language toggle session).
+- [x] Every page's UI chrome localized: Start, Project Management,
+      Energy Efficiency (Work + Preview), Floor Heating + its results
+      page, Instructions (including the full step-by-step prose, not
+      just short labels — explicit user decision), the video player
+      controls, and the crash dialog.
+- [x] **Final decision — stays fixed in both languages, not
+      translated:** formula/domain notation (Rог, Rод, r_пд, Qc, Qпт,
+      Qдол, δ-symbols), room labels ("пом.01"), the wall/opening
+      compass-direction letters already produced by `HVACrate2.Core`
+      (С/И/Ю/З/etc.), and the compass dial's N/E/S/W-style labels in
+      `CompassControl.xaml`. Only the Work page's direction *dropdown*
+      (`CompassDirectionOption`) translates — a UI input control, not
+      calculation output.

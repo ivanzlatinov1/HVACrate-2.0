@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using HVACrate2.App.Heating;
 
 namespace HVACrate2.App.Projects;
 
@@ -22,4 +24,8 @@ public sealed class ProjectRecord : INotifyPropertyChanged
         get => _floorCount;
         set { _floorCount = value; Raise(); }
     }
+
+    /// <summary>Floor Heating's own floor/room list — independent of the DXF-driven floors above.
+    /// Lives on the project so data survives leaving and re-entering the Floor Heating page.</summary>
+    public ObservableCollection<HeatingFloorViewModel> HeatingFloors { get; } = new();
 }

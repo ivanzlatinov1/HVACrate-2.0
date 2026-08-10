@@ -37,11 +37,31 @@
                        Foreground="{DynamicResource TextSecondaryBrush}"
                        TextWrapping="Wrap"
                        TextAlignment="Center"
-                       Margin="0,10,0,50" />
+                       Margin="0,10,0,16" />
 
-            <Button Content="Start"
+            <TextBlock x:Name="CurrentProjectText"
+                       FontSize="13"
+                       FontStyle="Italic"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Margin="0,0,0,34" />
+
+            <Button Content="Project Management"
                     Style="{StaticResource NavButtonStyle}"
-                    Click="OnStartClick"
+                    Click="OnProjectManagementClick"
+                    Margin="0,0,0,16" />
+
+            <Button x:Name="EnergyEfficiencyButton"
+                    Content="Energy Efficiency"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="OnEnergyEfficiencyClick"
+                    Margin="0,0,0,16" />
+
+            <Button x:Name="FloorHeatingButton"
+                    Content="Floor Heating"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="OnFloorHeatingClick"
                     Margin="0,0,0,16" />
 
             <Button Content="Instructions"

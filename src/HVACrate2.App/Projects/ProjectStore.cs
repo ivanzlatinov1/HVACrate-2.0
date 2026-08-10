@@ -7,6 +7,9 @@ public static class ProjectStore
 {
     public static ObservableCollection<ProjectRecord> Projects { get; } = new();
 
+    /// <summary>The project selected in Project Management — gates the Energy Efficiency and Floor Heating entry points.</summary>
+    public static ProjectRecord? CurrentProject { get; set; }
+
     public static ProjectRecord AddProject(string name)
     {
         var project = new ProjectRecord { Name = name };
@@ -17,5 +20,7 @@ public static class ProjectStore
     public static void DeleteProject(ProjectRecord project)
     {
         Projects.Remove(project);
+        if (CurrentProject == project)
+            CurrentProject = null;
     }
 }

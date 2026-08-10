@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using HVACrate2.App.Start;
-using HVACrate2.App.Work;
 
 namespace HVACrate2.App.Projects;
 
@@ -33,13 +32,17 @@ public partial class ProjectsPage : Page
 
         var project = ProjectStore.AddProject(name);
         NewProjectNameBox.Text = "";
-        NavigationService?.Navigate(new WorkPage(project));
+        ProjectStore.CurrentProject = project;
+        NavigationService?.Navigate(new StartPage());
     }
 
     private void OnOpenProjectClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: ProjectRecord project })
-            NavigationService?.Navigate(new WorkPage(project));
+        {
+            ProjectStore.CurrentProject = project;
+            NavigationService?.Navigate(new StartPage());
+        }
     }
 
     private void OnDeleteProjectClick(object sender, RoutedEventArgs e)

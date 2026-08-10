@@ -617,3 +617,72 @@ table before the Excel write.
 - `tests/HVACrate2.Core.Tests` is still an empty scaffold (one
   placeholder `Assert.That(true)` test) — pre-existing, not addressed
   this session.
+
+---
+
+## 2026-08-10 — Session 12 (branch `feature/floor-heating`)
+
+**Context:** two housekeeping items closed first, then a substantial
+new feature — Floor Heating — started from scratch at the user's
+request. Not in the original CLAUDE.md scope.
+
+**Done:**
+
+- Closed both discrepancies flagged 2026-08-09 as investigated-but-
+  unresolved: the 0.4×2.46m window (user checked the real CAD file,
+  confirmed real — their own earlier "does not exist" report was a
+  mistake) and the 90×210cm door height (user confirmed the source
+  drawing/reference was wrong, the DXF's own 210cm data stands). Both
+  closed in `plan.md`/`decisions.md`, no code changes.
+- Entered plan mode for the new Floor Heating feature (multi-file,
+  architectural); ran an `AskUserQuestion` round first to settle three
+  open design forks (project-selection flow, whether the heating
+  floor/room list ties to the DXF floors, delta/Qпт input granularity)
+  before writing any code. Plan approved, then implemented:
+  - `ProjectStore.CurrentProject` + Start page restructured to 4
+    buttons (Project Management, Energy Efficiency, Floor Heating,
+    Instructions), the latter two gated on a selected project.
+  - `FloorHeatingCalculator` (`HVACrate2.Core/FloorHeating/`) —
+    Rог/Rод/Ro/r_пд/Qc from the user's reference-sheet screenshots, all
+    physical constants hardcoded, only deltas + Qпт taken as input, per
+    room. Verified against the sheets' own worked example (Ro=1.4881)
+    before wiring up any UI.
+  - `FloorHeatingPage` (dynamic floor/room entry, mirroring `WorkPage`'s
+    existing dynamic-row pattern one level deeper) + inline results,
+    first pass.
+  - **Caught mid-session, corrected the same session:** user pointed
+    out the work had been done directly on `main` instead of a branch
+    — moved everything to `feature/floor-heating` immediately (no
+    commits existed yet on `main`, so this was a clean `git checkout
+    -b`, nothing to salvage).
+  - User supplied a real reference-table screenshot for a room results
+    table (Помещение/Qпт/r пд/Qc/m/Qдол) and the m/Qдол formulas
+    (`m = 3600·Qc/41870`, `Qдол = Qc − Qпт`). Added both to the
+    calculator and a per-floor `DataGrid` results table — verified
+    against the screenshot's own numbers (m=176.64, Qдол≈194.4 for the
+    first row) before considering it done.
+  - Per explicit user follow-up: split the results table onto a new
+    `HeatingResultsPage` (was inline on the data-entry page — user
+    wanted the same shape as the existing `WorkPage`/`PreviewPage`
+    split), and moved the floor/room data from a page-local field onto
+    `ProjectRecord.HeatingFloors` so it survives leaving and
+    re-entering Floor Heating for the same project (the first version
+    lost everything on navigating away — user caught this immediately
+    on trying it).
+  - `dotnet build` clean after every step; app launched and left
+    running for the user to click through directly (no UI-automation
+    tooling used this session — build success and a crash-free launch
+    were the only automated checks).
+
+**Open for the next session:**
+
+- **Floor Heating is intentionally incomplete, blocked on the user
+  supplying more information, not a bug:** a second table "for the
+  serpentines for each room" was requested but its formulas/columns
+  were never given; whether the feature needs any Excel output at all
+  (vs. staying in-app-only) is undecided. See plan.md Phase 6.
+- Everything else carried over from prior sessions (Phase 4 packaging,
+  Phase 5 polish, empty test scaffold) — untouched this session, not
+  being worked on per explicit user instruction ("Phase 4 and 5 will
+  wait for now, as well as the tests").
+- `feature/floor-heating` not yet merged to `main`.

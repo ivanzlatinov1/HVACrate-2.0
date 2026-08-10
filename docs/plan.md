@@ -93,16 +93,14 @@
       stays as-is. User confirmed every wall-layer naming convention in
       real projects is English — no need to support non-English layer
       names.
-- [ ] **Flagged, not a code bug:** a 0.4m×2.46m window in
-      `floor2.dxf`/`floor3.dxf` and a 90×210cm door height in
-      `floor3.dxf` were both reported as possibly wrong. Investigated
-      exhaustively (geometry, duplicates, hidden/disabled flags,
-      alternate attributes, paired body objects) — every check
-      confirms the DXF data itself is internally consistent and
-      geometrically real; see decisions.md, 2026-08-09, for the full
-      evidence trail. If these are still wrong, the discrepancy is in
-      the source drawing, not in extraction — needs the user to check
-      the original CAD file directly.
+- [x] **Resolved, not a code bug:** the 0.4m×2.46m window in
+      `floor2.dxf`/`floor3.dxf` — user checked the real CAD file and
+      confirmed the window is real; the earlier "does not exist" report
+      was the user's own mistake. See decisions.md, 2026-08-10.
+- [x] **Resolved, not a code bug:** the 90×210cm door height in
+      `floor3.dxf` (reference implied 208cm) — confirmed a bug in the
+      source drawing/reference, not in extraction; the DXF's own
+      `AC_MarkerText_3` data (210cm) stands. See decisions.md, 2026-08-10.
 
 ## Phase 3 — WPF UI
 
@@ -170,3 +168,38 @@
       use different layer naming conventions)
 - [ ] Better error handling for missing/malformed DXF data
 - [ ] End-user documentation (short usage guide)
+
+## Phase 6 — Floor Heating (new feature, in progress, branch
+`feature/floor-heating`)
+
+A second, independent calculation track alongside the Energy Efficiency
+(DXF→Excel) flow — per-room floor heating heat-flow. Not in the original
+CLAUDE.md scope; started 2026-08-10 at explicit user request, from
+formula/constant reference sheets the user supplied as screenshots (not
+yet added as files anywhere in the repo).
+
+- [x] Start page restructured to 4 entry points (Project Management,
+      Energy Efficiency, Floor Heating, Instructions), gated by a
+      selected "current project" — `ProjectStore.CurrentProject`,
+      set by Project Management's Open/Create, consumed by Start to
+      enable/disable the two project-scoped buttons. See decisions.md,
+      2026-08-10 (Floor Heating session).
+- [x] `FloorHeatingCalculator` (`HVACrate2.Core/FloorHeating/`) —
+      Rог, Rод, Ro, r_пд, Qc, m (kg/h), Qдол, all constants hardcoded,
+      deltas + Qпт taken per room. Verified against the user's own
+      worked example numbers (Ro=1.4881) and a real reference table
+      row (m=176.64, Qдол≈194.4).
+- [x] `FloorHeatingPage` (data entry: dynamic floor/room lists, 6
+      deltas + Qпт per room) split from `HeatingResultsPage` (per-floor
+      results table: Помещение/Qпт/r пд/Qc/m/Qдол) — Calculate
+      validates then navigates between them.
+- [x] Floor/room data persisted on `ProjectRecord.HeatingFloors` (not
+      just the page instance) — re-entering Floor Heating for the same
+      project keeps previously entered data. Still lost on app restart,
+      same as every other in-memory project field.
+- [ ] **Blocked on the user, not a code gap:** the feature is missing
+      the information needed to finish it — a second table ("for the
+      serpentines for each room") was requested but its formulas/
+      columns were never supplied, and it's unclear whether floor
+      heating needs any Excel output or stays in-app-only. Explicitly
+      deferred to a future session per the user.

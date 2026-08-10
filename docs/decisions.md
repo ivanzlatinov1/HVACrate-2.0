@@ -1074,3 +1074,124 @@ solution root, all 3 projects including the `HVACrate2.Core.Tests`
 scaffold) clean, one pre-existing unrelated placeholder-test warning
 (`TUnitAssertions0005` on the scaffold `Tests.cs`, predates this
 session, not touched).
+
+---
+
+## 2026-08-10 — Both flagged discrepancies from 2026-08-09 closed by
+user verification against the real CAD file
+
+**0.4m×2.46m window (`floor2.dxf`/`floor3.dxf`):** user checked the
+original CAD file at the flagged location and confirmed the window is
+real — the earlier "does not exist" report was the user's own mistake,
+not a drawing or extraction problem. Matches the investigation's
+conclusion (real window body geometry, no duplicates, no hidden flags).
+Closed, no code change.
+
+**90×210cm door height (`floor3.dxf`, reference implied 208cm):** user
+confirmed this was a bug in the source drawing/reference, not in
+extraction — the DXF's own marker data (`AC_MarkerText_3` = 210,
+verbatim on every w=90 door marker in the file) stands as correct.
+Closed, no code change.
+
+---
+
+## 2026-08-10 — Floor Heating: a new, independent calculation track;
+project-gated Start page; architecture decisions
+
+**Context:** the user requested an entirely new feature not in
+CLAUDE.md's original scope — per-room floor heating heat-flow
+calculation, alongside the existing Energy Efficiency (DXF→Excel) flow.
+Given the scope (new domain model, new page, a restructured Start menu,
+a project-selection concept that didn't exist before), this went through
+`EnterPlanMode` first, including an `AskUserQuestion` round to lock three
+open design forks before writing code.
+
+**Project selection/gating — "select & return to Start," not a
+project hub page.** Considered two shapes: (a) opening a project in
+Project Management sets it "current" and returns to the Start page,
+whose Energy Efficiency/Floor Heating buttons are then enabled and
+route into that project; (b) opening a project goes to a per-project
+hub page with its own buttons. User picked (a). Implemented as
+`ProjectStore.CurrentProject` (nullable static, cleared by
+`DeleteProject` if the deleted project was current); `ProjectsPage`'s
+Create/Open now set it and navigate back to `StartPage` instead of
+jumping straight into `WorkPage` as before. `StartPage` reads
+`CurrentProject` in its constructor to enable/disable the two gated
+buttons and show a "Current project: X" / "No project selected"
+subtitle. `NavButtonStyle`/`SecondaryButtonStyle` in `App.xaml` had no
+`IsEnabled` visual state at all before this — added a dimmed-opacity
+trigger to both, otherwise disabled buttons would have looked identical
+to enabled ones.
+
+**Floor Heating's floor/room list is independent of the DXF-driven
+floors on the Energy Efficiency side.** No DXF is involved in floor
+heating at all — the user adds floors and rooms manually. Considered
+reusing the Energy Efficiency floor count instead; rejected by the user
+since a project may not have DXF floors set up yet, and the two tracks
+don't need to agree on floor count.
+
+**Deltas and Qпт are entered per room, not per floor.** Matches how the
+formulas are actually consumed (every room has its own construction and
+its own required heat) and the user's own phrasing ("the required heat
+of a room").
+
+**Formulas, from user-supplied reference-sheet screenshots** (not yet
+committed anywhere as source files — only transcribed into
+`FloorHeatingCalculator.cs`):
+
+```
+Rог = 1/αпод + δбет/λбет + δзам_под/λзам_под + δтер/λтер     [m²K/W]
+Rод = 1/αтав + δбет/λбет + δизол/λизол + δплоч/λплоч + δзам_тав/λзам_тав  [m²K/W]
+Ro  = Rог + Rод
+r_пд = Rод / Ro
+Qc  = Qпт / r_пд                                              [W]
+m   = 3600 · Qc / 41870                                       [kg/h]
+Qдол = Qc − Qпт                                                [W]
+```
+
+All eight physical constants (`αпод`, `λбет`, `λзам_под`, `λтер`,
+`αтав`, `λизол`, `λплоч`, `λзам_тав`) are hardcoded per explicit user
+instruction — only the deltas (meters) and Qпт (watts) are user input.
+Note `δбет` (half the pipe-screed thickness) is the *same* physical
+layer in both Rог and Rод — one input, reused in both formulas, not two
+separate fields that happen to share a name.
+
+**Verified against the user's own reference numbers, not just unit
+logic:** the worked example in the screenshots (Ro1 = 0.1408 + 1.3473 =
+1.4881 m²K/W) reproduces exactly from the example delta values shown.
+A later real reference-table row (Qпт=1860, r_пд=0.9054 → Qc=2054.4,
+m=176.64, Qдол≈194.4) also reproduces exactly once m/Qдол were added —
+confirms the `41870` constant and the Qдол formula, not just Ro.
+
+**Results moved to a separate page (`HeatingResultsPage`), split from
+the data-entry page (`FloorHeatingPage`), per explicit user request**
+mid-session — the first implementation showed the results table inline
+on the same page as the input rows; the user wanted the split instead
+(mirrors the existing Energy Efficiency `WorkPage`/`PreviewPage` split).
+`FloorHeatingPage`'s "Calculate & View Results" now validates every
+room, computes results, and navigates to `HeatingResultsPage`, which
+takes just the `ProjectRecord` and renders one `DataGrid` per floor.
+Back on the results page uses `NavigationService.GoBack()`, matching
+`PreviewPage`'s existing convention.
+
+**Floor/room data persistence — reversed an earlier assumption in the
+same session.** The first implementation deliberately kept the
+floor/room list local to the `FloorHeatingPage` instance (matching how
+`WorkPage`'s own DXF-floor list already worked, per the original design
+note). The user explicitly rejected this once they saw it: re-entering
+Floor Heating for a project they'd already filled in showed blank rows.
+Fixed by moving the collection onto `ProjectRecord.HeatingFloors`
+(`ObservableCollection<HeatingFloorViewModel>`) — since `ProjectRecord`
+instances are shared/reused via `ProjectStore`, the same object is
+handed to `FloorHeatingPage` every time the user re-enters, so its data
+now survives navigating away and back (still lost on app restart, same
+as every other in-memory project field — not a new gap, consistent with
+the existing "in-memory only" project-store decision from 2026-08-05).
+
+**Explicitly deferred, not a code bug or oversight:** the feature is
+incomplete because the user doesn't yet have enough information to spec
+the rest of it — a second table "for the serpentines for each room" was
+requested but never given formulas/columns, and whether floor heating
+needs any Excel output (vs. staying in-app-only, unlike Energy
+Efficiency) is undecided. Picked up again in a future session once the
+user has the missing reference material.

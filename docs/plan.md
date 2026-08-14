@@ -88,11 +88,17 @@
       made when exporting the `.dxf` from AutoCAD — a wrong result from
       a third, untested convention is a user-side export issue, not
       something the app needs to guard against further.
-- [x] **Final decision:** wall-layer detection
+- [x] ~~**Final decision:** wall-layer detection
       (`WallTopology.IsWallLayer`, English "wall" substring match)
       stays as-is. User confirmed every wall-layer naming convention in
       real projects is English — no need to support non-English layer
-      names.
+      names.~~ **Superseded 2026-08-14** — real Bulgarian-only wall
+      layers (`Стени - екстериор`/`Стени - интериор`) turned up in
+      `floor1-3.dxf`. `WallTopology.cs` (and its English-only substring
+      check) was deleted entirely as part of the Phase 8 opening-
+      extraction rebuild — wall-like geometry is now identified by
+      proximity to the `OVK` boundary, not by layer name in any
+      language. See decisions.md, 2026-08-14.
 - [x] **Resolved, not a code bug:** the 0.4m×2.46m window in
       `floor2.dxf`/`floor3.dxf` — user checked the real CAD file and
       confirmed the window is real; the earlier "does not exist" report
@@ -229,3 +235,67 @@ yet added as files anywhere in the repo).
       `CompassControl.xaml`. Only the Work page's direction *dropdown*
       (`CompassDirectionOption`) translates — a UI input control, not
       calculation output.
+
+## Phase 8 — Name-agnostic opening extraction, branch
+`feature/floor-heating` (2026-08-14 session)
+
+- [x] Locale bug fixed: height field (and the floor-heating delta/Qпт
+      fields, and DXF marker-attribute parsing) rejected decimal input
+      under a non-`.`-decimal OS locale (e.g. `bg-BG`) because
+      `double.TryParse` used the current culture instead of an explicit
+      invariant one. See decisions.md, 2026-08-14.
+- [x] Opening (window/door) extraction rebuilt from scratch as a
+      name-agnostic geometry/topology pipeline
+      (`src/HVACrate2.Core/Openings/`), replacing the old
+      `W Marker`/`D Marker` name-gated approach and the `WallTopology.cs`
+      hop-tracing classifier it depended on (both retired/deleted). Two
+      candidate strategies (`BlockAttributeStrategy`,
+      `PerpendicularLabeledLineStrategy`), exterior/interior classified
+      by direct distance to the `OVK` boundary, best-effort type/
+      confidence scoring, deduplication, and per-floor diagnostics
+      (`OpeningExtractionDiagnostics`, surfaced as a warning on the
+      Preview page instead of a silently-empty table). Validated against
+      the 3 real `floor1-3.dxf` samples (0 openings before → 46/77/76
+      after) and synthetic in-memory documents with deliberately
+      arbitrary layer/block names, proving detection doesn't depend on
+      recognizing any specific name. See decisions.md, 2026-08-14, for
+      the full architecture and the rejected "8m snap radius" approach
+      that had to be walked back after producing 100+ false positives.
+- [x] **Validated against a real reference table**, supplied by the user
+      the same day: 106 openings extracted vs. 108 in the reference,
+      9/14 real sizes matching exactly (all 4 directions). Two real bugs
+      found and fixed in the process — see decisions.md, 2026-08-14
+      (follow-up entry): (1) one physical opening detected multiple times
+      from its own body geometry (frame/jamb lines), not deduplicated
+      because the hits landed farther apart than the position-based
+      merge tolerance — fixed by deduplicating on label-entity identity
+      instead of position; (2) a handful of false positives from
+      furniture/dimension/installation annotation layers coincidentally
+      matching the geometric pattern — fixed with a small, evidence-
+      driven negative name-hint list (`WordHints.NonOpening`).
+- [x] **The `0.8×2.0m` anomaly root-caused and fixed** — it was a real
+      interior door (room → balcony), confirmed by the user against the
+      original drawing. Exterior classification needed a wall-*backing*
+      check (is the opening's own host wall itself part of the OVK
+      boundary?), not just an OVK-*distance* check — added
+      `WallGeometryClassifier.CollectWallLikeSegments` (both endpoints
+      near OVK) plus a targeted, margin-guarded override for walls
+      explicitly labeled interior. Also fixed a real bug found along the
+      way: the wall-layer name-hint path accepted `Стени - интериор`
+      (interior) as readily as `Стени - екстериор` (exterior), since
+      Bulgarian "стен" doesn't distinguish them — removed, proximity to
+      OVK is the only wall-likeness signal now. Result: 104/108 openings,
+      10/14 sizes matching exactly (up from 9/14). See decisions.md,
+      2026-08-14 (second follow-up).
+- [x] Preview page north-arrow rendering bug fixed — the arrow's fixed
+      screen anchor let the "N" label land outside the canvas's clipped
+      bounds for some north angles, leaving a stray line fragment. See
+      decisions.md, 2026-08-14.
+- [ ] `BlockAttributeStrategy`'s looser exterior tolerance (2.5m, vs.
+      0.8m for the leader-line strategy) is an explicitly acknowledged
+      trade-off versus the old full topology-hop-tracing for a detached
+      annotation whose real wall is ambiguous by distance alone — the
+      original floor1-4/`example.dxf` sample files that motivated that
+      old approach no longer exist on disk, so this trade-off is only
+      synthetic-tested, not re-validated against the real historical
+      edge case.

@@ -749,3 +749,123 @@ language toggle (English/Bulgarian) across every page.
   still not merged to `main`.
 - Everything else carried over from prior sessions (Phase 4 packaging,
   Phase 5 polish, empty test scaffold) untouched.
+
+---
+
+## 2026-08-14 — Session 14 (branch `feature/floor-heating`)
+
+**Context:** first session working from a fresh checkout — started by
+converting the user's freshly-uploaded `Топлотехника V6.0.16.xls` to
+`.xlsx` (the tracked template was missing on disk) so `dotnet build`
+would succeed. Then two fixes requested: the Work page's height field
+rejecting decimals, and windows/doors not being extracted at all for
+three new real sample floors the user uploaded.
+
+**Done:**
+
+- **Locale bug found and fixed.** Confirmed the user's machine is
+  `bg-BG`; `double.TryParse` without an explicit culture rejects `.`-
+  decimal input entirely under that locale (verified directly via a
+  throwaway PowerShell check). Fixed in all three places this pattern
+  existed: `FloorRowViewModel.TryGetHeightM`, `HeatingRoomViewModel`'s
+  delta/Qпт parsing, and `FloorProcessor`'s DXF marker-attribute parsing
+  — all now normalize `,`→`.` then parse with
+  `CultureInfo.InvariantCulture` explicitly.
+- **Investigated the "forgets windows/doors" report** by running a
+  throwaway diagnostic harness against the user's 3 new sample floors —
+  confirmed 0 openings extracted from all three, even after the locale
+  fix, and traced it to a third DXF export convention (no `W Marker`/
+  `D Marker` blocks at all; bare `MText`+`Line` leader annotations; pure
+  Bulgarian wall-layer names) that the existing name-gated extraction
+  code had no path for.
+- User explicitly rejected patching in a fourth hardcoded convention and
+  gave a detailed, specific redesign brief: detect openings from
+  geometry/topology, treat names as hints only, never silently return
+  zero, and prove name-independence with renamed-layer tests. Entered
+  plan mode; the user corrected one design detail mid-plan ("an opening
+  is a perpendicular line to the OVK layer with two numbers next to the
+  line," replacing an early "gap in the wall run" idea) before approving.
+- **Implemented the full pipeline** (`src/HVACrate2.Core/Openings/`, ~10
+  new files) — see decisions.md for the complete architecture. Deleted
+  `WallTopology.cs` entirely (confirmed via grep it had no other callers
+  once the old extraction method was replaced).
+- **First implementation had a real bug, caught by testing against the
+  real files, not assumed correct:** an "exterior classifier" that
+  snapped each candidate to the nearest wall-like point within an 8m
+  search radius accepted almost everything in a compact floor plan
+  (124 openings, many with implausible ~0.3-0.5m widths). Root-caused,
+  reverted to a direct anchor-to-`OVK`-boundary distance check with a
+  per-strategy tolerance, and tightened the leader-line strategy's
+  label-pairing (labels must cluster near each other, not just near the
+  line) — brought results down to plausible door/window sizes.
+- Extended `tests/HVACrate2.Core.Tests`: real-sample regression tests
+  (skip, don't fail, if `samples/` isn't present — it's gitignored) plus
+  synthetic in-memory `DxfDocument`s with deliberately nonsense layer/
+  block names, proving the two implemented strategies don't depend on
+  recognizing any specific name. Added
+  `FloorProcessor.ProcessFloorFromDocument` as the public test entry
+  point (split from `ProcessFloor`, which still just loads a file). All
+  7 tests pass (`dotnet run --project tests/HVACrate2.Core.Tests` — plain
+  `dotnet test` no longer works on this SDK).
+- Full solution `dotnet build` clean. App launched and left running for
+  the user to click through the real Work → Extract & Preview flow
+  directly.
+
+**Continued the same session** once the user supplied their own
+manually-extracted reference file (`Топлотехника V6.0.16.xls`, a live
+client file — converted to `.xlsx` via Excel COM automation for reading,
+never modified, not committed anywhere) for the same building:
+
+- Compared the 46/77/76-per-floor result against the reference's merged
+  108-opening table — confirmed real over-counting (199 raw openings,
+  ~1.84x too many), matching the user's own direct report.
+- Found and fixed two concrete bugs by tracing evidence, not guessing:
+  (1) one physical opening detected multiple times from its own frame/
+  jamb geometry, not deduplicated because the hits landed farther apart
+  than the position-based merge tolerance — fixed by deduplicating on
+  label-entity identity instead of position; (2) a handful of false
+  positives from furniture/dimension/installation annotation layers
+  coincidentally matching the geometric pattern — fixed with a small,
+  evidence-driven negative name-hint list. Brought the total to 106,
+  9/14 sizes matching the reference exactly.
+- User then flagged one specific remaining false positive
+  (`0.8×2.0m`) with a screenshot of the actual drawing, confirming it's
+  a real interior door (room → balcony) and asking for a real fix, not
+  just a note. Root-caused: exterior classification only checked
+  distance to the OVK curve, not whether the opening's own host wall was
+  itself part of the boundary. Added a wall-*backing* check
+  (`WallGeometryClassifier.CollectWallLikeSegments`, requiring both
+  endpoints of a segment near OVK) plus a margin-guarded override for
+  walls explicitly labeled interior — found and fixed a real bug in the
+  process (the wall-name hint didn't distinguish "интериор" from
+  "екстериор" in Bulgarian, since both contain "стен"). Iterated three
+  times against the real comparison after each change (a bare "closer
+  than" override and an over-tight 0.25m threshold each looked like
+  progress in isolation but regressed other correct matches when
+  checked) before landing on the version that fixed the flagged case
+  without regressing others: 104/108, 10/14 exact.
+- Fixed a separately-reported UI bug: the 2D preview's north-arrow label
+  could land outside the canvas's clipped bounds depending on the
+  floor's north angle, leaving a stray line fragment (user circled a
+  screenshot). Root cause was a fixed anchor position never checked
+  against every possible angle; moved it to guarantee clearance.
+- Full solution `dotnet build` clean and all 7 tests passing after every
+  change in this continuation, not just at the end. App relaunched with
+  each new build so the user could verify live.
+
+**Open for the next session:**
+
+- Remaining ~4-point gap (104 vs. 108) across a few sizes with 1-3
+  fewer/extra counts per direction — smaller than what's been fixed so
+  far, not yet individually root-caused the way the two bigger rounds
+  above were.
+- `BlockAttributeStrategy`'s looser (2.5m) exterior tolerance for
+  detached annotation blocks is a known, explicitly-flagged trade-off
+  versus the old full topology-hop-tracing — only synthetic-tested, not
+  re-validated against the original floor1-4/`example.dxf` edge case
+  that motivated the old approach, since those sample files no longer
+  exist on disk.
+- `feature/floor-heating` still not merged to `main`; Floor Heating's own
+  open items (Session 12) unchanged.
+- Everything else carried over from prior sessions (Phase 4 packaging,
+  Phase 5 polish) untouched.

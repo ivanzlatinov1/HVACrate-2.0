@@ -100,7 +100,12 @@ public partial class FloorPreviewControl : UserControl
         double dxfDx = Math.Cos(mathAngleRad), dxfDy = Math.Sin(mathAngleRad);
         double screenDx = dxfDx, screenDy = -dxfDy; // same Y-flip as ToScreen
 
-        const double cx = 20, cy = 20, len = 14;
+        // Anchor needs enough clearance for the label to stay inside the canvas (which clips) in
+        // every direction the arrow can point (North=0 sends it straight up, North=180 straight
+        // down, etc.) — not just the corner position that happened to work for one specific angle.
+        // Line length 14 + label gap 8 + the label's own half-extent (~9px for "N" at this size)
+        // means the label center can land up to ~31px from the anchor; 40 leaves a safe margin.
+        const double cx = 40, cy = 40, len = 14;
         var line = new Line
         {
             X1 = cx, Y1 = cy,

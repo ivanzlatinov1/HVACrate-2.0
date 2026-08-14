@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using HVACrate2.App.Shared;
@@ -43,7 +44,7 @@ public sealed class FloorRowViewModel : INotifyPropertyChanged
     }
 
     public bool TryGetHeightM(out double heightM)
-        => double.TryParse(HeightText.Replace(",", "."), out heightM) && heightM > 0;
+        => double.TryParse(HeightText.Replace(",", "."), NumberStyles.Float, CultureInfo.InvariantCulture, out heightM) && heightM > 0;
 
     private string _apartmentsText = "";
     public string ApartmentsText

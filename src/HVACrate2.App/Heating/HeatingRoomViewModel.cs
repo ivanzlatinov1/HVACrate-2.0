@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
 
@@ -78,7 +79,7 @@ public sealed class HeatingRoomViewModel : INotifyPropertyChanged
     public bool TryGetQptW(out double value) => TryParse(QptText, out value);
 
     private static bool TryParse(string text, out double value)
-        => double.TryParse(text.Replace(",", "."), out value) && value >= 0;
+        => double.TryParse(text.Replace(",", "."), NumberStyles.Float, CultureInfo.InvariantCulture, out value) && value >= 0;
 
     private Visibility _resultVisibility = Visibility.Collapsed;
     public Visibility ResultVisibility

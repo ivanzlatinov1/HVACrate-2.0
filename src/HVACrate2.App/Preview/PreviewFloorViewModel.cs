@@ -1,3 +1,4 @@
+using System.Windows;
 using HVACrate2.App.Shared;
 using HVACrate2.Core.Models;
 
@@ -27,4 +28,7 @@ public sealed class PreviewFloorViewModel
             .Where(g => g.ByDir.Count > 0)
             .Select(g => $"{g.Size.Width:0.##}×{g.Size.Height:0.##} m — {string.Join(", ", g.ByDir.Select(d => $"{d.Key}: {d.Value}"))}")
             .ToList();
+
+    public Visibility OpeningWarningVisibility => Result.OpeningDiagnostics.Warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    public string OpeningWarningText => string.Join(" ", Result.OpeningDiagnostics.Warnings);
 }

@@ -11,4 +11,6 @@ public sealed class FloorResult
     // For the 2D preview only — not used by the Excel write, which works off WallTotals/OpeningGroups.
     public List<(double X, double Y)> OvkVerticesM { get; set; } = new();
     public List<Opening> Openings { get; set; } = new();
+
+    public OpeningExtractionDiagnostics OpeningDiagnostics { get; set; } = new();
 }

@@ -1,20 +1,19 @@
 using ClosedXML.Excel;
 using HVACrate2.Core.Models;
+using HVACrate2.Core.Openings;
 using netDxf;
-using netDxf.Blocks;
-using netDxf.Entities;
 
 namespace HVACrate2.Core;
 
 public static class FloorProcessor
 {
-    private static readonly string[] DirOrder = ["С", "СИ", "И", "ЮИ", "Ю", "ЮЗ", "З", "СЗ"];
+    internal static readonly string[] DirOrder = ["С", "СИ", "И", "ЮИ", "Ю", "ЮЗ", "З", "СЗ"];
 
     private const int FirstFloorGeometryRow = 7;
     private const int FirstFloorWallRow = 31;
     private const int OpeningsTableStartRow = 57;
 
-    private static string BearingToDirection(double mathAngleDeg, double northDeg)
+    internal static string BearingToDirection(double mathAngleDeg, double northDeg)
     {
         double bearing = ((90.0 - mathAngleDeg) % 360.0 + 360.0) % 360.0;
         double adjusted = ((bearing - northDeg) % 360.0 + 360.0) % 360.0;
@@ -22,7 +21,7 @@ public static class FloorProcessor
         return DirOrder[idx];
     }
 
-    private static string EdgeOutwardDirection(double x1, double y1, double x2, double y2, double northDeg, double ccwSign)
+    internal static string EdgeOutwardDirection(double x1, double y1, double x2, double y2, double northDeg, double ccwSign)
     {
         double dx = x2 - x1, dy = y2 - y1;
         double nx = ccwSign >= 0 ? dy : -dy;
@@ -135,124 +134,6 @@ public static class FloorProcessor
         return totals;
     }
 
-    private static double DistancePointToSegment(double px, double py, double x1, double y1, double x2, double y2)
-    {
-        double dx = x2 - x1, dy = y2 - y1;
-        double lenSq = dx * dx + dy * dy;
-        if (lenSq < 1e-9) return Math.Sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
-        double t = Math.Clamp(((px - x1) * dx + (py - y1) * dy) / lenSq, 0.0, 1.0);
-        double cx = x1 + t * dx, cy = y1 + t * dy;
-        return Math.Sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
-    }
-
-    private static string NearestOvkEdgeDirection(
-        double px, double py, List<(double x1, double y1, double x2, double y2)> ovkEdges,
-        double northDeg, double ccwSign)
-    {
-        double bestDist = double.MaxValue;
-        string bestDir = DirOrder[0];
-        foreach (var (x1, y1, x2, y2) in ovkEdges)
-        {
-            double d = DistancePointToSegment(px, py, x1, y1, x2, y2);
-            if (d < bestDist)
-            {
-                bestDist = d;
-                bestDir = EdgeOutwardDirection(x1, y1, x2, y2, northDeg, ccwSign);
-            }
-        }
-        return bestDir;
-    }
-
-    /// <summary>
-    /// Assigns an opening's compass direction from the OVK perimeter segment its host wall run
-    /// actually reaches — see <see cref="WallTopology.AssignOvkEdgeIndex"/> for the deterministic
-    /// rule (plurality vote among traced paths, grouped by which OVK edge each path's reached node
-    /// was already confirmed to belong to at tight/drafting precision). Falls back to
-    /// nearest-point-to-the-marker only for the degenerate case where classification somehow found
-    /// a path but it matched no OVK edge index (should not occur in practice).
-    /// </summary>
-    private static string AssignOvkDirection(
-        int? edgeIdx, (double x, double y) markerPos,
-        List<(double x1, double y1, double x2, double y2)> ovkEdges, double northDeg, double ccwSign)
-    {
-        if (edgeIdx is null)
-            return NearestOvkEdgeDirection(markerPos.x, markerPos.y, ovkEdges, northDeg, ccwSign);
-
-        var (fx1, fy1, fx2, fy2) = ovkEdges[edgeIdx.Value];
-        return EdgeOutwardDirection(fx1, fy1, fx2, fy2, northDeg, ccwSign);
-    }
-
-    /// <summary>
-    /// Extracts openings whose host wall — determined from wall geometry, not marker position —
-    /// is part of the OVK perimeter. See <see cref="WallTopology"/> for why marker-to-OVK distance
-    /// cannot make this call reliably, and docs/decisions.md for the investigation behind it.
-    /// Nested-marker convention (floor1-4's Wall_N_2): the host wall's OWN block is frequently just
-    /// the short pier between two openings, not the wall that actually reaches OVK — the exporter
-    /// splits one physical exterior wall into many such blocks with no explicit link between them.
-    /// <see cref="WallTopology.BuildWallRun"/> reconstructs that physical wall for the exterior/
-    /// interior decision only (<see cref="WallTopology.WallRun.OwnsGenuineOvkSegment"/>) — once a
-    /// run is confirmed exterior, path-finding and direction use only the opening's own host block
-    /// (<see cref="WallTopology.FindHostWallNodes"/>), not the run's other blocks: that function's
-    /// own collinear graph trace already reaches the rest of the run when a real path exists, and
-    /// scoping the trace's starting points to the opening's own block is what keeps the vote from
-    /// being diluted by nodes several rooms away (see docs/decisions.md for the investigation).
-    /// Top-level/Archicad-style markers are unaffected by any of this — no per-wall-block splitting
-    /// convention was found for that case, so they keep using
-    /// <see cref="WallTopology.HostWallOwnsOvkNode"/> on the single companion-matched wall directly.
-    /// </summary>
-    private static List<Opening> ExtractOpeningsTouchingOvk(
-        DxfDocument doc, List<(double x1, double y1, double x2, double y2)> ovkEdges,
-        double northDeg, double ccwSign, double coordDivisor)
-    {
-        var graph = WallTopology.BuildWallGraph(doc, coordDivisor);
-        WallTopology.MarkOvkNodes(graph, ovkEdges);
-        var blockIndex = WallTopology.BuildWallBlockIndex(doc, coordDivisor);
-
-        var topLevelMarkers = doc.Entities.Inserts
-            .Where(i => i.Block.Name.StartsWith("W Marker") || i.Block.Name.StartsWith("D Marker"))
-            .Select(i => (Insert: i, Parent: (Block?)null));
-        var nestedMarkers = doc.Blocks
-            .SelectMany(b => b.Entities.OfType<Insert>().Select(i => (Insert: i, Parent: (Block?)b)))
-            .Where(x => x.Insert.Block.Name.StartsWith("W Marker") || x.Insert.Block.Name.StartsWith("D Marker"));
-
-        var openings = new List<Opening>();
-        foreach (var (ins, parent) in topLevelMarkers.Concat(nestedMarkers))
-        {
-            var attrs = ins.Attributes.ToDictionary(a => a.Tag, a => a.Value?.ToString() ?? "");
-            if (!attrs.TryGetValue("AC_MarkerText_2", out var wStr)) continue;
-            if (!attrs.TryGetValue("AC_MarkerText_3", out var hStr)) continue;
-            if (!double.TryParse(wStr.Replace(",", "."), out double widthCm)) continue;
-            if (!double.TryParse(hStr.Replace(",", "."), out double heightCm)) continue;
-
-            if (parent is not null)
-            {
-                var run = WallTopology.BuildWallRun(blockIndex, graph, ovkEdges, parent.Name);
-                if (!run.OwnsGenuineOvkSegment) continue;
-            }
-
-            var hostNodes = WallTopology.FindHostWallNodes(doc, graph, ins, parent);
-            if (parent is null && !WallTopology.HostWallOwnsOvkNode(hostNodes, graph)) continue;
-
-            var paths = WallTopology.FindExteriorOvkPaths(hostNodes, graph);
-            if (paths.Count == 0) continue;
-
-            int? edgeIdx = WallTopology.AssignOvkEdgeIndex(paths, graph);
-
-            var markerPos = (ins.Position.X / coordDivisor, ins.Position.Y / coordDivisor);
-            string dir = AssignOvkDirection(edgeIdx, markerPos, ovkEdges, northDeg, ccwSign);
-
-            openings.Add(new Opening
-            {
-                WidthM = Math.Round(widthCm / 100.0, 2),
-                HeightM = Math.Round(heightCm / 100.0, 2),
-                Direction = dir,
-                PositionXM = markerPos.Item1,
-                PositionYM = markerPos.Item2,
-            });
-        }
-        return openings;
-    }
-
     private static Dictionary<(double w, double h), Dictionary<string, int>> GroupOpenings(List<Opening> openings)
     {
         var groups = new Dictionary<(double, double), Dictionary<string, int>>();
@@ -280,9 +161,11 @@ public static class FloorProcessor
 
     /// <summary>Reads one floor's DXF and computes area/volume/corners/wall lengths/openings from its OVK boundary.</summary>
     public static FloorResult ProcessFloor(FloorInput input, string ovkLayer = "OVK")
-    {
-        var doc = DxfDocument.Load(input.DxfPath);
+        => ProcessFloorFromDocument(DxfDocument.Load(input.DxfPath), input, ovkLayer);
 
+    /// <summary>Same as <see cref="ProcessFloor"/> but takes an already-loaded/constructed document — the entry point synthetic tests use to exercise the pipeline without needing a file on disk.</summary>
+    public static FloorResult ProcessFloorFromDocument(DxfDocument doc, FloorInput input, string ovkLayer = "OVK")
+    {
         double coordDivisor = DetectCoordinateDivisor(doc, ovkLayer);
         var ovkVertices = OvkVertices(doc, ovkLayer, coordDivisor);
         var ovkEdges = OvkEdges(ovkVertices);
@@ -294,7 +177,7 @@ public static class FloorProcessor
         double volumeM3 = areaM2 * input.HeightM;
         int convexCorners = CountConvexCorners(ovkVertices, ccwSign);
 
-        var openings = ExtractOpeningsTouchingOvk(doc, ovkEdges, input.NorthDeg, ccwSign, coordDivisor);
+        var (openings, openingDiagnostics) = OpeningExtractor.Extract(doc, ovkEdges, input.NorthDeg, ccwSign, coordDivisor);
         var openingGroups = GroupOpenings(openings);
 
         return new FloorResult
@@ -306,6 +189,7 @@ public static class FloorProcessor
             OpeningGroups = openingGroups,
             OvkVerticesM = ovkVertices,
             Openings = openings,
+            OpeningDiagnostics = openingDiagnostics,
         };
     }
 

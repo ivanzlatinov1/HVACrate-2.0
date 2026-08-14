@@ -94,6 +94,9 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <TextBlock Text="{Binding OpeningWarningText}" Foreground="{DynamicResource ErrorBrush}"
+                                               TextWrapping="Wrap" Margin="0,6,0,0"
+                                               Visibility="{Binding OpeningWarningVisibility}" />
                                 </StackPanel>
                             </Grid>
                         </Border>

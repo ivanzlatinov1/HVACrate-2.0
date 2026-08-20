@@ -22,9 +22,6 @@ namespace HVACrate2.Core.Openings;
 /// </summary>
 internal static class ExteriorClassifier
 {
-    // How close the candidate's anchor must sit to a point of a wall segment that's itself already
-    // confirmed to lie on OVK (both endpoints, see WallGeometryClassifier). A "genuinely embedded in
-    // this wall" check, not a "somewhere near the boundary" one.
     private const double WallBackingToleranceM = 0.5;
 
     public static void Classify(
@@ -41,12 +38,6 @@ internal static class ExteriorClassifier
             : wallLikeSegments.Min(s => GeometryUtils.DistancePointToSegment(candidate.AnchorM.x, candidate.AnchorM.y, s.x1, s.y1, s.x2, s.y2));
         bool hasWallBacking = nearestWallLikeDist <= WallBackingToleranceM;
 
-        // An explicitly interior-labeled wall *meaningfully* closer to the candidate than the nearest
-        // confirmed exterior-forming wall is direct evidence the candidate's real host wall is that
-        // interior one. A bare "closer at all" comparison over-triggers near a corner where an
-        // interior partition legitimately meets the exterior wall right next to a genuine opening —
-        // require a real margin, not a coin-flip-close tiebreak, so only a clear case (the flagged
-        // door: ~0.1m to its interior wall vs. 0.29m to the nearest exterior one) overrides.
         const double InteriorOverrideMarginM = 0.15;
         double nearestInteriorDist = explicitInteriorSegments.Count == 0
             ? double.MaxValue

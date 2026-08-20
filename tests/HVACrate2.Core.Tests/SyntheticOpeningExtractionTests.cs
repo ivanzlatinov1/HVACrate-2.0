@@ -15,8 +15,6 @@ namespace HVACrate2.Core.Tests;
 /// </summary>
 public class SyntheticOpeningExtractionTests
 {
-    // A 10m x 8m rectangular OVK boundary, in centimeters (the coordinate divisor FloorProcessor
-    // tries first) — "OVK" is this app's own fixed convention, not a third-party name under test.
     private static DxfDocument NewDocumentWithOvkRectangle()
     {
         var doc = new DxfDocument();
@@ -39,8 +37,6 @@ public class SyntheticOpeningExtractionTests
     {
         var doc = NewDocumentWithOvkRectangle();
 
-        // An INSERT with 2 numeric ATTRIB values, sitting on the OVK boundary — deliberately named
-        // nothing recognizable ("Layer_ABC"/"Zorp_9"), unlike "W Marker"/"D Marker".
         var block = new Block("Zorp_9");
         block.AttributeDefinitions.Add(new AttributeDefinition("FOO1"));
         block.AttributeDefinitions.Add(new AttributeDefinition("FOO2"));
@@ -63,9 +59,6 @@ public class SyntheticOpeningExtractionTests
     {
         var doc = NewDocumentWithOvkRectangle();
 
-        // A short line perpendicular to the left OVK edge, tip touching OVK at (0,400), with two
-        // numeric labels clustered near its other (label) end — on arbitrary layers, no leader/
-        // marker/dimension naming anywhere.
         var line = new Line(new Vector2(0, 400), new Vector2(-70, 400)) { Layer = new Layer("Layer_XYZ") };
         doc.Entities.Add(line);
         doc.Entities.Add(new MText("90", new Vector2(-75, 395), 5) { Layer = new Layer("Layer_QQQ") });
@@ -85,8 +78,6 @@ public class SyntheticOpeningExtractionTests
     {
         var doc = NewDocumentWithOvkRectangle();
 
-        // Same shape as the exterior case above, but placed deep in the interior (5m from any OVK
-        // edge) — must NOT be classified as an exterior opening.
         var line = new Line(new Vector2(500, 400), new Vector2(430, 400)) { Layer = new Layer("Layer_XYZ") };
         doc.Entities.Add(line);
         doc.Entities.Add(new MText("90", new Vector2(425, 395), 5) { Layer = new Layer("Layer_QQQ") });

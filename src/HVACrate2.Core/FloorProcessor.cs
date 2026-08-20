@@ -38,22 +38,13 @@ public static class FloorProcessor
         return sum / 2.0;
     }
 
-    // Most sample projects author DXF coordinates in centimeters (divide raw units by 100 for
-    // meters). Some exports (confirmed on a real Archicad file) instead use millimeters, despite
-    // declaring an unrelated/generic $INSUNITS header value identical to the centimeter files —
-    // that header cannot be trusted to tell the two conventions apart. See DetectCoordinateDivisor.
     private const double CentimeterDivisor = 100.0;
     private const double MillimeterDivisor = 1000.0;
 
-    // No real single floor plate is this large — used only to pick between the two known
-    // real-world DXF unit conventions above, not as an opening-classification heuristic.
     private const double ImplausibleFloorAreaM2 = 20000.0;
 
     private static List<(double x, double y)> OvkVertices(DxfDocument doc, string ovkLayer, double coordDivisor)
     {
-        // Ensure the vertex list ends with a duplicate of the first vertex, regardless of
-        // whether the source polyline closes via an explicit repeated vertex or via its
-        // "closed" flag — every other function in this file assumes the former.
         List<(double x, double y)> ToClosedRing(IEnumerable<(double x, double y)> raw)
         {
             var pts = raw.ToList();
@@ -76,10 +67,6 @@ public static class FloorProcessor
         if (candidates.Count == 0)
             throw new InvalidOperationException($"Не е намерена гранична полилиния на слой '{ovkLayer}'.");
 
-        // The OVK layer can hold more than just the building envelope — individual
-        // room/apartment outlines, annotation frames, etc. drawn on the same layer.
-        // The true exterior envelope always encloses the largest area of any of them,
-        // so pick that one instead of just the first match found in the file.
         return candidates.OrderByDescending(v => Math.Abs(SignedArea(v))).First();
     }
 
@@ -266,14 +253,14 @@ public static class FloorProcessor
     {
         var ws = wb.Worksheet("Изчисления");
 
-        ws.Cell("D317").Value = totalApartments;                 // Готварска печка (stoves)
-        ws.Cell("D321").Value = totalApartments;                 // Хладилник (refrigerators)
-        ws.Cell("D331").Value = 2 * totalApartments;              // Телевизори (TVs)
-        ws.Cell("D332").Value = totalApartments;                 // Пералня (laundries)
-        ws.Cell("D333").Value = 2 * totalApartments;              // Компютри (PCs)
-        ws.Cell("D336").Value = 5 * totalApartments;              // Други (others)
-        ws.Cell("D291").Value = Math.Ceiling(7 * totalAreaM2 / 20.0); // Лампи (lamps)
-        ws.Cell("D348").Value = totalApartments;                 // Хора (people)
+        ws.Cell("D317").Value = totalApartments;
+        ws.Cell("D321").Value = totalApartments;
+        ws.Cell("D331").Value = 2 * totalApartments;
+        ws.Cell("D332").Value = totalApartments;
+        ws.Cell("D333").Value = 2 * totalApartments;
+        ws.Cell("D336").Value = 5 * totalApartments;
+        ws.Cell("D291").Value = Math.Ceiling(7 * totalAreaM2 / 20.0);
+        ws.Cell("D348").Value = totalApartments;
     }
 
     /// <summary>Computes each floor's DXF result (in order, floor 0 = Floor I) without writing Excel — for a review/preview step before committing to the write.</summary>

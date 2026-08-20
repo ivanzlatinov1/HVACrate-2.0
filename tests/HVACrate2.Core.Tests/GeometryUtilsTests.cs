@@ -14,7 +14,6 @@ public class GeometryUtilsTests
     [Test]
     public async Task DistancePointToSegment_PointBeyondEnd_ClampsToEndpoint()
     {
-        // Segment (0,0)-(10,0); point past the far end projects to t>1, clamped to (10,0).
         double d = GeometryUtils.DistancePointToSegment(15, 0, 0, 0, 10, 0);
         await Assert.That(d).IsEqualTo(5.0).Within(1e-9);
     }
@@ -36,7 +35,6 @@ public class GeometryUtilsTests
     [Test]
     public async Task DistancePointToSegment_DegenerateZeroLengthSegment_FallsBackToPointDistance()
     {
-        // Segment endpoints coincide (lenSq ~ 0) — falls back to plain point-to-point distance.
         double d = GeometryUtils.DistancePointToSegment(3, 4, 1, 1, 1, 1);
         await Assert.That(d).IsEqualTo(GeometryUtils.Distance(3, 4, 1, 1)).Within(1e-9);
     }
@@ -46,10 +44,10 @@ public class GeometryUtilsTests
     {
         var edges = new List<(double x1, double y1, double x2, double y2)>
         {
-            (0, 0, 10, 0),   // edge 0: bottom
-            (10, 0, 10, 10), // edge 1: right
-            (10, 10, 0, 10), // edge 2: top
-            (0, 10, 0, 0),   // edge 3: left
+            (0, 0, 10, 0),
+            (10, 0, 10, 10),
+            (10, 10, 0, 10),
+            (0, 10, 0, 0),
         };
 
         double d = GeometryUtils.DistancePointToOvk(9, 5, edges, out int nearestEdgeIndex);
@@ -84,7 +82,6 @@ public class GeometryUtilsTests
     [Test]
     public async Task AngleToEdgeDeg_OppositeDirection_StillTreatedAsParallel()
     {
-        // abs(dot) means a line pointing the opposite way along the same axis is still 0 deg, not 180.
         double angle = GeometryUtils.AngleToEdgeDeg(-1, 0, 0, 0, 5, 0);
         await Assert.That(angle).IsEqualTo(0.0).Within(0.01);
     }

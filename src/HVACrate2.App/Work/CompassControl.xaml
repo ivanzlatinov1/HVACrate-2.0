@@ -7,7 +7,6 @@
              Width="110" Height="110">
     <Border CornerRadius="55" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="2">
         <Grid Width="106" Height="106">
-            <!-- Fixed dial: tick marks and N/E/S/W labels never rotate -->
             <Canvas Width="106" Height="106">
                 <Ellipse Canvas.Left="10" Canvas.Top="10" Width="86" Height="86"
                           Stroke="{DynamicResource CardBorderBrush}" StrokeThickness="1" />
@@ -31,7 +30,6 @@
                            Foreground="{DynamicResource TextSecondaryBrush}" />
             </Canvas>
 
-            <!-- Rotating needle: points toward the selected direction, animated on change -->
             <Grid RenderTransformOrigin="0.5,0.5">
                 <Grid.RenderTransform>
                     <RotateTransform x:Name="Rotation" Angle="0" />

@@ -10,7 +10,6 @@ internal static class TextNumberParsing
 
 internal static class DimensionRange
 {
-    // Plausible physical range for a window/door dimension (width or height), in centimeters.
     public const double MinCm = 10.0;
     public const double MaxCm = 500.0;
 }

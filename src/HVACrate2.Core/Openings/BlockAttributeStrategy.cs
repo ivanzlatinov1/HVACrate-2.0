@@ -12,12 +12,6 @@ internal sealed class BlockAttributeStrategy : IOpeningCandidateStrategy
 {
     public string Name => "BlockAttribute";
 
-    // Looser than the leader-line strategy's tolerance: a detached annotation block's own position
-    // is not guaranteed to sit exactly at the wall (historically observed 0.25m up to ~2.5m from
-    // OVK for genuine exterior openings on some CAD conventions — see docs/decisions.md). This is a
-    // known trade-off versus full wall-topology tracing: without it, a detached marker whose real
-    // wall happens to be exactly as far away as some interior opening cannot be perfectly resolved
-    // by distance alone. Accepted here in favor of not depending on any block/layer name.
     private const double ExteriorToleranceM = 2.5;
 
     public List<OpeningCandidate> Detect(OpeningDetectionContext ctx)

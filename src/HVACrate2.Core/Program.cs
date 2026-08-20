@@ -3,9 +3,6 @@ using HVACrate2.Core.Models;
 
 namespace HVACrate2.Core;
 
-// A manual console harness for local testing against real sample files/paths (see ProjectConfig's
-// hardcoded defaults) — not part of the library's public contract exercised by the app or the test
-// suite, and not meaningfully testable without real local sample/template files.
 [ExcludeFromCodeCoverage]
 public static class Program
 {
@@ -22,7 +19,6 @@ public static class Program
 
         var result = FloorProcessor.ProcessFloor(input, cfg.OvkLayer);
 
-        // Never overwrite the tracked blank template — write to a scratch copy instead.
         string scratchOutputPath = Path.Combine(Path.GetDirectoryName(cfg.ExcelPath)!, "console-test-output.xlsx");
         FloorProcessor.ProcessAndWriteFloors([input], cfg.ExcelPath, scratchOutputPath, cfg.OvkLayer);
         Console.WriteLine($"Wrote scratch output to: {scratchOutputPath}");

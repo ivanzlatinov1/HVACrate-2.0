@@ -75,7 +75,7 @@ public class TypeClassifierTests
     public async Task Classify_ArcAndNameHint_ConfidenceClampedToOne()
     {
         var candidate = Candidate(sourceHint: "Door Marker");
-        candidate.TypeConfidenceDoor = 0.9; // pre-seeded high, plus arc (+0.4) and name hint (+0.3) would overflow 1.0
+        candidate.TypeConfidenceDoor = 0.9;
         var entities = new List<FlatEntity> { Arc(0, 0, 0.5) };
 
         TypeClassifier.Classify(candidate, entities);

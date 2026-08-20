@@ -46,7 +46,6 @@ public class BlockAttributeStrategyTests
     [Test]
     public async Task Detect_AttributesOutOfPlausibleRange_AreIgnored()
     {
-        // Only one of the three attributes is in the plausible 10-500cm range — not enough for a pair.
         var entity = Insert("Layer", "Block", new() { ["A"] = "9999", ["B"] = "1", ["C"] = "80" });
 
         var found = new BlockAttributeStrategy().Detect(Ctx(entity));
@@ -87,7 +86,7 @@ public class BlockAttributeStrategyTests
     [Test]
     public async Task Detect_WidthHeightAssignment_LargerBecomesHeight()
     {
-        var entity = Insert("Layer", "Block", new() { ["A"] = "210", ["B"] = "80" }); // reversed order
+        var entity = Insert("Layer", "Block", new() { ["A"] = "210", ["B"] = "80" });
 
         var found = new BlockAttributeStrategy().Detect(Ctx(entity));
 

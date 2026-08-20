@@ -1,7 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using HVACrate2.Core.Models;
 
 namespace HVACrate2.Core;
 
+// A manual console harness for local testing against real sample files/paths (see ProjectConfig's
+// hardcoded defaults) — not part of the library's public contract exercised by the app or the test
+// suite, and not meaningfully testable without real local sample/template files.
+[ExcludeFromCodeCoverage]
 public static class Program
 {
     public static void Main(string[] args)

@@ -44,12 +44,11 @@ public class FloorProcessorExcelTests
             using var wb = new XLWorkbook(outPath);
             var ws = wb.Worksheet("Изчисления");
 
-            await Assert.That(ws.Cell("C7").GetDouble()).IsEqualTo(80.0).Within(0.01); // 10m x 8m
+            await Assert.That(ws.Cell("C7").GetDouble()).IsEqualTo(80.0).Within(0.01);
             await Assert.That(ws.Cell("E7").GetDouble()).IsEqualTo(2.89).Within(0.001);
             await Assert.That(ws.Cell("F7").GetDouble()).IsEqualTo(80.0 * 2.89).Within(0.01);
-            await Assert.That(ws.Cell("K7").GetDouble()).IsEqualTo(4.0).Within(0.01); // 4 convex corners
+            await Assert.That(ws.Cell("K7").GetDouble()).IsEqualTo(4.0).Within(0.01);
 
-            // Wall row: a rectangle's perimeter length is split across N/E/S/W (10m+10m+8m+8m=36m).
             double perimeter = ws.Cell("D31").GetDouble() + ws.Cell("F31").GetDouble()
                 + ws.Cell("H31").GetDouble() + ws.Cell("J31").GetDouble();
             await Assert.That(perimeter).IsEqualTo(36.0).Within(0.01);
@@ -86,7 +85,7 @@ public class FloorProcessorExcelTests
             await Assert.That(ws.Cell("D336").GetDouble()).IsEqualTo(5 * totalApartments);
             await Assert.That(ws.Cell("D348").GetDouble()).IsEqualTo(totalApartments);
 
-            double totalArea = 80.0 + 20.0; // 10x8 + 5x4
+            double totalArea = 80.0 + 20.0;
             double expectedLamps = Math.Ceiling(7 * totalArea / 20.0);
             await Assert.That(ws.Cell("D291").GetDouble()).IsEqualTo(expectedLamps);
         }
@@ -100,7 +99,6 @@ public class FloorProcessorExcelTests
     public async Task WriteFloorsToExcel_OpeningsTable_WritesSizeGroupedByDirection()
     {
         var doc = RectFloorDoc();
-        // A wall-like segment backing the left edge, plus a block-attribute opening near it.
         doc.Entities.Add(new Line(new Vector2(0, 100), new Vector2(0, 700)) { Layer = new Layer("Walls") });
         var block = new netDxf.Blocks.Block("Zorp");
         block.AttributeDefinitions.Add(new AttributeDefinition("A"));
@@ -134,8 +132,6 @@ public class FloorProcessorExcelTests
     [Test]
     public async Task ProcessAndWriteFloors_FullPipeline_ProducesReadableWorkbook()
     {
-        // Exercises ProcessAndWriteFloors end-to-end (ProcessFloors + WriteFloorsToExcel combined),
-        // writing straight from FloorInput without a pre-computed FloorResult step.
         string dxfPath = Path.Combine(Path.GetTempPath(), $"hvacrate-test-{Guid.NewGuid():N}.dxf");
         RectFloorDoc().Save(dxfPath);
         string outPath = Path.Combine(Path.GetTempPath(), $"hvacrate-test-{Guid.NewGuid():N}.xlsx");
@@ -159,7 +155,6 @@ public class FloorProcessorExcelTests
     public async Task ProcessFloorFromDocument_MultipleOvkLayerPolylines_PicksLargestArea()
     {
         var doc = new DxfDocument();
-        // A small "room" polygon and the true, much larger building envelope, both on the OVK layer.
         doc.Entities.Add(new Polyline2D(new[]
         {
             new Polyline2DVertex(0, 0), new Polyline2DVertex(50, 0),
@@ -194,23 +189,17 @@ public class FloorProcessorExcelTests
     [Test]
     public async Task ProcessFloorFromDocument_MillimeterConvention_FallsBackWhenCentimeterAreaIsImplausible()
     {
-        // A real ~10m x 8m floor authored in millimeters: raw coordinates 100x larger than the
-        // centimeter convention. Misread as centimeters this would compute an 8000m x... wait,
-        // 10000cm x 8000cm = 100m x 80m = 8000 m^2 (still plausible!) so use dimensions large enough
-        // that the centimeter reading is implausible (>20000 m^2) to force the millimeter fallback.
-        var doc = RectFloorDoc(widthCm: 500_000, heightCm: 400_000); // as centimeters: 5000m x 4000m
+        var doc = RectFloorDoc(widthCm: 500_000, heightCm: 400_000);
         var input = new FloorInput { DxfPath = "synthetic", HeightM = 2.5, NorthDeg = 0, ApartmentCount = 1 };
 
         var result = FloorProcessor.ProcessFloorFromDocument(doc, input, "OVK");
 
-        // Correctly read as millimeters instead: 500m x 400m = 200,000 m^2.
         await Assert.That(result.AreaM2).IsEqualTo(200_000.0).Within(1.0);
     }
 
     [Test]
     public async Task ProcessFloorFromDocument_NonRectangularFloor_CountsReflexCornerCorrectly()
     {
-        // An L-shaped floor: 7 convex corners, 1 reflex (the inner notch corner).
         var doc = new DxfDocument();
         var vertices = new[]
         {

@@ -2,14 +2,12 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- Shared -->
     <sys:String x:Key="Str_Back">&#8592; Назад</sys:String>
     <sys:String x:Key="Str_ThemeDark">Тъмен режим</sys:String>
     <sys:String x:Key="Str_ThemeLight">Светъл режим</sys:String>
     <sys:String x:Key="Str_FloorLabel">Етаж {0}</sys:String>
     <sys:String x:Key="Str_Err_AtLeastOneFloor">Изисква се поне един етаж.</sys:String>
 
-    <!-- Start page -->
     <sys:String x:Key="Str_Start_Subtitle">Автоматично извличане на топлотехнически данни от DXF чертежи</sys:String>
     <sys:String x:Key="Str_Start_CurrentProject">Текущ проект: {0}</sys:String>
     <sys:String x:Key="Str_Start_NoProject">Няма избран проект — започнете с Управление на проекти.</sys:String>
@@ -18,7 +16,6 @@
     <sys:String x:Key="Str_Start_FloorHeating">Подово отопление</sys:String>
     <sys:String x:Key="Str_Start_Instructions">Инструкции</sys:String>
 
-    <!-- Projects page -->
     <sys:String x:Key="Str_Projects_Title">Проекти</sys:String>
     <sys:String x:Key="Str_Projects_Create">Създай</sys:String>
     <sys:String x:Key="Str_Projects_NamePlaceholder">Име на нов проект...</sys:String>
@@ -29,7 +26,6 @@
     <sys:String x:Key="Str_Projects_DeleteConfirmMessage">Да се изтрие ли проект „{0}“? Това само го премахва от списъка — никакви файлове не се изтриват.</sys:String>
     <sys:String x:Key="Str_Projects_DeleteConfirmTitle">Изтриване на проект</sys:String>
 
-    <!-- Work page -->
     <sys:String x:Key="Str_Work_TitlePrefix">Етажи — </sys:String>
     <sys:String x:Key="Str_Work_ChooseDxf">Избери DXF...</sys:String>
     <sys:String x:Key="Str_Work_NoFileSelected">Няма избран файл</sys:String>
@@ -44,7 +40,6 @@
     <sys:String x:Key="Str_Work_Err_Apartments">Етаж {0}: въведете валиден брой апартаменти.</sys:String>
     <sys:String x:Key="Str_Work_Err_Extraction">Извличането е неуспешно: {0}</sys:String>
 
-    <!-- Compass directions -->
     <sys:String x:Key="Str_Dir_North">Север</sys:String>
     <sys:String x:Key="Str_Dir_NorthEast">Североизток</sys:String>
     <sys:String x:Key="Str_Dir_East">Изток</sys:String>
@@ -54,7 +49,6 @@
     <sys:String x:Key="Str_Dir_West">Запад</sys:String>
     <sys:String x:Key="Str_Dir_NorthWest">Северозапад</sys:String>
 
-    <!-- Preview page -->
     <sys:String x:Key="Str_Preview_Title">Преглед преди записване в Excel</sys:String>
     <sys:String x:Key="Str_Preview_Area">Площ</sys:String>
     <sys:String x:Key="Str_Preview_Volume">Обем</sys:String>
@@ -69,7 +63,6 @@
     <sys:String x:Key="Str_Preview_Success">Готово — записани {0} етаж(а). Изтеглете попълнения Excel файл по-долу.</sys:String>
     <sys:String x:Key="Str_Preview_Err_NoFile">Няма попълнен файл за изтегляне — натиснете отново „Потвърди и запиши в Excel“.</sys:String>
 
-    <!-- Floor Heating page -->
     <sys:String x:Key="Str_Heating_TitlePrefix">Подово отопление — </sys:String>
     <sys:String x:Key="Str_Heating_RemoveFloor">Премахни етаж</sys:String>
     <sys:String x:Key="Str_Heating_RemoveRoom">Премахни помещение</sys:String>
@@ -78,10 +71,8 @@
     <sys:String x:Key="Str_Heating_Calculate">Изчисли и виж резултатите</sys:String>
     <sys:String x:Key="Str_Heating_Err_Field">Етаж {0}, Помещение {1}: въведете валидна стойност за {2}.</sys:String>
 
-    <!-- Heating results page -->
     <sys:String x:Key="Str_HeatingResults_TitlePrefix">Подово отопление — Резултати — </sys:String>
 
-    <!-- Instructions page -->
     <sys:String x:Key="Str_Instr_Heading1">1. Експортирайте .dxf файла от AutoCAD</sys:String>
     <sys:String x:Key="Str_Instr_Step1_1">1. Отворете проекта на сградата в AutoCAD</sys:String>
     <sys:String x:Key="Str_Instr_Step1_2">2. Отидете на етажа, за който искате да изчислите енергийна ефективност</sys:String>
@@ -100,7 +91,6 @@
     <sys:String x:Key="Str_Instr_Step2_4">4. Изберете височина и посока на текущия етаж</sys:String>
     <sys:String x:Key="Str_Instr_Step2_5">5. След като всички етажи са въведени, натиснете бутона за експортирания Excel файл</sys:String>
 
-    <!-- Video player -->
     <sys:String x:Key="Str_Video_Loading">Зареждане на видео...</sys:String>
     <sys:String x:Key="Str_Video_Missing">Видеото не е налично.</sys:String>
     <sys:String x:Key="Str_Video_Failed">Видеото не можа да се зареди — проверете интернет връзката си и опитайте отново.</sys:String>
@@ -108,7 +98,6 @@
     <sys:String x:Key="Str_Video_Pause">Пауза</sys:String>
     <sys:String x:Key="Str_Video_Restart">Отначало</sys:String>
 
-    <!-- Crash dialog -->
     <sys:String x:Key="Str_Crash_Message">Възникна грешка и действието не можа да завърши:&#10;&#10;{0}&#10;&#10;Подробностите са запазени в:&#10;{1}</sys:String>
     <sys:String x:Key="Str_Crash_Title">HVACrate — неочаквана грешка</sys:String>
 

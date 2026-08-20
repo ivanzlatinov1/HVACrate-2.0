@@ -11,8 +11,6 @@ namespace HVACrate2.Core.Tests;
 /// full FloorProcessor pipeline.</summary>
 public class OpeningExtractorTests
 {
-    // Coordinates are raw DXF units in centimeters; coordDivisor=100 converts to the meter-based
-    // ovkEdges passed in directly below (a 10m x 8m rectangle, left edge at x=0).
     private static readonly List<(double x1, double y1, double x2, double y2)> RectOvkMeters =
     [
         (0, 0, 10, 0),
@@ -50,7 +48,6 @@ public class OpeningExtractorTests
     public async Task Extract_CandidateFarFromOvk_IsRejectedAsInterior()
     {
         var doc = NewDoc();
-        // Deep interior, ~5m from the nearest OVK edge — far beyond any strategy's tolerance.
         AddAttributeInsert(doc, "Zorp", (500, 400), "80", "210");
 
         var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
@@ -64,8 +61,6 @@ public class OpeningExtractorTests
     {
         var doc = NewDoc();
         AddLeftEdgeWall(doc);
-        // 20cm x 90cm: passes the strategy's own 10-500cm ATTRIB range, but 0.20m width fails
-        // OpeningExtractor's own 0.4-3.5m whole-opening plausibility check.
         AddAttributeInsert(doc, "Zorp", (0, 400), "20", "90");
 
         var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
@@ -79,8 +74,6 @@ public class OpeningExtractorTests
     {
         var doc = NewDoc();
         AddLeftEdgeWall(doc);
-        // 90cm x 400cm: width (0.9m) is within OpeningExtractor's 0.4-3.5m range, but height (4.0m)
-        // exceeds its 3.5m whole-opening cap — isolates the height check from the width check above.
         AddAttributeInsert(doc, "Zorp", (0, 400), "90", "400");
 
         var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
@@ -108,7 +101,6 @@ public class OpeningExtractorTests
     public async Task Extract_NoCandidatesFound_WarnsWithWallGeometryPresent()
     {
         var doc = NewDoc();
-        // A wall-like line near OVK (both endpoints within tolerance) but no opening candidate at all.
         AddLeftEdgeWall(doc);
 
         var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
@@ -121,7 +113,7 @@ public class OpeningExtractorTests
     [Test]
     public async Task Extract_NoCandidatesAndNoWallGeometry_WarnsAboutMissingWalls()
     {
-        var doc = NewDoc(); // completely empty — no entities at all
+        var doc = NewDoc();
 
         var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
 

@@ -21,7 +21,7 @@ public class OpeningExtractionRegressionTests
     {
         string path = Path.Combine(SamplesDir, fileName);
         if (!File.Exists(path))
-            return; // not present in this checkout — nothing to regress against
+            return;
 
         var input = new FloorInput { DxfPath = path, HeightM = 2.89, NorthDeg = 0.0, ApartmentCount = 1 };
         var result = FloorProcessor.ProcessFloor(input, "OVK");

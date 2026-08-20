@@ -45,8 +45,6 @@ public class WordHintsTests
     [Test]
     public async Task ContainsAny_ExplicitInterior_DoesNotMatchGenericWallHint()
     {
-        // Bulgarian "стен" (wall) is common to both interior and exterior wall layers and must not
-        // by itself count as an "explicitly interior" hint.
         await Assert.That(WordHints.ContainsAny("Стени - интериор", WordHints.ExplicitInterior)).IsTrue();
         await Assert.That(WordHints.ContainsAny("Стени - екстериор", WordHints.ExplicitInterior)).IsFalse();
     }

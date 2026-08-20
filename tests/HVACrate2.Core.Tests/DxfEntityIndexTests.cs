@@ -8,7 +8,7 @@ namespace HVACrate2.Core.Tests;
 
 public class DxfEntityIndexTests
 {
-    private const double Divisor = 100.0; // centimeters -> meters
+    private const double Divisor = 100.0;
 
     [Test]
     public async Task Build_FlattensTopLevelLine()
@@ -103,17 +103,14 @@ public class DxfEntityIndexTests
     {
         var doc = new DxfDocument();
         var innerBlock = new Block("Inner");
-        // A line from (0,0) to (100,0) local to the block.
         innerBlock.Entities.Add(new Line(new Vector2(0, 0), new Vector2(100, 0)) { Layer = new Layer("Inner") });
 
-        // Insert the block at world position (500, 500), no rotation, unit scale.
         var insert = new Insert(innerBlock, new Vector2(500, 500)) { Layer = new Layer("Outer") };
         doc.Entities.Add(insert);
 
         var flat = DxfEntityIndex.Build(doc, Divisor);
 
         var line = flat.Single(f => f.Kind == FlatKind.Line);
-        // World coords: (500,500) + (0,0) and (500,500) + (100,0), then /100 for meters.
         await Assert.That(line.PointsM[0]).IsEqualTo((5.0, 5.0));
         await Assert.That(line.PointsM[1]).IsEqualTo((6.0, 5.0));
     }
@@ -125,8 +122,6 @@ public class DxfEntityIndexTests
         var block = new Block("Rotated");
         block.Entities.Add(new Line(new Vector2(0, 0), new Vector2(10, 0)) { Layer = new Layer("L") });
 
-        // Scale x2, rotate 90 deg CCW, positioned at world origin: local (10,0) -> scaled (20,0)
-        // -> rotated 90 deg -> (0,20).
         var insert = new Insert(block, new Vector2(0, 0))
         {
             Layer = new Layer("L"),
@@ -158,7 +153,6 @@ public class DxfEntityIndexTests
         var flat = DxfEntityIndex.Build(doc, Divisor);
 
         var line = flat.Single(f => f.Kind == FlatKind.Line);
-        // Innermost line starts at local (0,0); +100 (middle insert) +1000 (outer insert) = 1100, /100 = 11.0m.
         await Assert.That(line.PointsM[0]).IsEqualTo((11.0, 10.0));
     }
 }

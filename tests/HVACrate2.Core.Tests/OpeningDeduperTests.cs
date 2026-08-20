@@ -66,8 +66,6 @@ public class OpeningDeduperTests
     [Test]
     public async Task Dedupe_MissingDimensionOnEitherSide_StillMerges()
     {
-        // A candidate with no dimension yet (WidthM/HeightM null) is treated as "same" by position
-        // alone — the null-dimension branch in OpeningDeduper.IsSame.
         var a = MakeCandidate(1.0, 1.0, edgeIndex: 0, width: null, height: null);
         var b = MakeCandidate(1.0, 1.0, edgeIndex: 0, width: 0.9, height: 2.1);
 

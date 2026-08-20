@@ -15,26 +15,15 @@ internal sealed class PerpendicularLabeledLineStrategy : IOpeningCandidateStrate
 {
     public string Name => "PerpendicularLabeledLine";
 
-    // How far a dimension label may sit from the line endpoint it annotates. Generous relative to
-    // the ~0.15-0.30m offsets measured on real data, to tolerate other drafting scales/conventions,
-    // but tight enough to not sweep in unrelated dimension-chain text elsewhere in the drawing.
     private const double LabelSearchRadiusM = 0.6;
 
-    // The two labels of a genuine width/height pair sit right next to each other (measured ~0.25m
-    // apart on real data) — this is what actually separates "a marker's own two numbers" from two
-    // unrelated numeric labels that both happen to be within LabelSearchRadiusM of the same line.
     private const double MaxLabelPairDistanceM = 0.5;
 
-    // A line within this many degrees of perpendicular (90 deg) to the nearest OVK edge counts.
     private const double MinPerpendicularAngleDeg = 70.0;
 
-    // A real leader/jamb tick is short (measured ~0.25-0.9m on real data); long lines in this range
-    // are dimension-chain segments elsewhere in the drawing, not an opening's own annotation line.
     private const double MinLineLengthM = 0.05;
     private const double MaxLineLengthM = 1.5;
 
-    // The tip is already confirmed to sit at the real wall (see class remarks) — a tight tolerance
-    // here is what actually discriminates a genuine facade opening from interior/unrelated geometry.
     private const double ExteriorToleranceM = 0.8;
 
     public List<OpeningCandidate> Detect(OpeningDetectionContext ctx)
@@ -48,15 +37,6 @@ internal sealed class PerpendicularLabeledLineStrategy : IOpeningCandidateStrate
             .ToList();
         if (numericTexts.Count == 0) return [];
 
-        // Keyed by the *identity* of the two label entities a candidate line matched — not by the
-        // resulting candidate's position. A single real window/door commonly has several lines near
-        // its own dimension labels (frame edges, a wall tick, the marker leader itself), each
-        // independently satisfying the perpendicular+two-numbers pattern but anchored at slightly
-        // different points along the opening's own width — often farther apart than a position-based
-        // merge tolerance can safely use without also risking merging two distinct, similarly-sized
-        // openings nearby. Two candidates that matched the exact same pair of label entities are
-        // unambiguously the same real annotation, so only the one whose tip lands closest to OVK
-        // (the most likely genuine wall touch point) is kept.
         var textIndex = numericTexts
             .Select((t, i) => (t, i))
             .ToDictionary(x => x.t, x => x.i);

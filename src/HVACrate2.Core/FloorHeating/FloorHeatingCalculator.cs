@@ -5,19 +5,17 @@ namespace HVACrate2.Core.FloorHeating;
 /// <summary>Floor heating heat-flow calculation for a single room, per the reference formulas.</summary>
 public static class FloorHeatingCalculator
 {
-    // Heat-transfer coefficients [W/m2K]
-    private const double AlphaPod = 8.7; // от пода (from the floor)
-    private const double AlphaTav = 8.7; // от тавана (from the ceiling)
+    private const double AlphaPod = 8.7;
+    private const double AlphaTav = 8.7;
 
-    // Thermal conductivities [W/m.K]
-    private const double LambdaBet = 1.45;    // заливка на тръбите (pipe screed)
-    private const double LambdaZamPod = 0.93; // изравнителна замазка (floor leveling screed)
-    private const double LambdaTer = 1.05;    // теракота (tile)
-    private const double LambdaIzol = 0.043;  // топлоизолация / стиропор (insulation)
-    private const double LambdaPloch = 0.78;  // плоча (slab)
-    private const double LambdaZamTav = 0.87; // замазка на тавана (ceiling screed)
+    private const double LambdaBet = 1.45;
+    private const double LambdaZamPod = 0.93;
+    private const double LambdaTer = 1.05;
+    private const double LambdaIzol = 0.043;
+    private const double LambdaPloch = 0.78;
+    private const double LambdaZamTav = 0.87;
 
-    private const double WaterHeatFactor = 41870; // 3600 * Qc / WaterHeatFactor => mass flow in kg/h
+    private const double WaterHeatFactor = 41870;
 
     public static HeatingRoomResult Calculate(HeatingRoomInput input)
     {

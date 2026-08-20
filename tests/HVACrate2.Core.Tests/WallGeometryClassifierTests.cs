@@ -34,7 +34,6 @@ public class WallGeometryClassifierTests
     [Test]
     public async Task CollectWallLikeSegments_OnlyOneEndpointNearOvk_IsExcluded()
     {
-        // Simulates an interior partition that merely T-joins an exterior wall at one corner.
         var entities = new List<FlatEntity> { LineEntity("Any", (0.1, 0.0), (5.0, 5.0)) };
 
         var segments = WallGeometryClassifier.CollectWallLikeSegments(entities, SquareOvk);
@@ -75,8 +74,6 @@ public class WallGeometryClassifierTests
     [Test]
     public async Task CollectExplicitInteriorSegments_LayerNamedInterior_IsIncludedRegardlessOfOvkDistance()
     {
-        // Deep in the interior — CollectWallLikeSegments would reject this, but the explicit-interior
-        // collector has no OVK-proximity requirement at all.
         var entities = new List<FlatEntity> { LineEntity("Стени - интериор", (5.0, 5.0), (6.0, 5.0)) };
 
         var segments = WallGeometryClassifier.CollectExplicitInteriorSegments(entities);

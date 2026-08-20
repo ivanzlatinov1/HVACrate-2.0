@@ -11,7 +11,6 @@ namespace HVACrate2.Core.Openings;
 /// </summary>
 internal static class OpeningExtractor
 {
-    // Plausible physical range for a whole opening dimension (width or height), in meters.
     private const double MinOpeningM = 0.4;
     private const double MaxOpeningM = 3.5;
 

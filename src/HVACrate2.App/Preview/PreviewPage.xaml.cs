@@ -33,8 +33,6 @@ public partial class PreviewPage : Page
 
     private void OnBackClick(object sender, RoutedEventArgs e)
     {
-        // Return to the existing WorkPage instance (not a fresh one) so the user's already-entered
-        // floor rows (DXF paths, heights, apartment counts) aren't lost.
         NavigationService?.GoBack();
     }
 

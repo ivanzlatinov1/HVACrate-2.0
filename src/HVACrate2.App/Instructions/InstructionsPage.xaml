@@ -25,7 +25,6 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel MaxWidth="820" HorizontalAlignment="Center">
 
-                <!-- Part 1: exporting the DXF from AutoCAD -->
                 <TextBlock Text="{DynamicResource Str_Instr_Heading1}" FontSize="20" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12" />
 
@@ -50,7 +49,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Part 2: using HVACrate 2.0 -->
                 <TextBlock Text="{DynamicResource Str_Instr_Heading2}" FontSize="20" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12" />
 

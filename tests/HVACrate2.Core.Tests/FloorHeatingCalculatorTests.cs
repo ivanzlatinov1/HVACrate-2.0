@@ -29,8 +29,6 @@ public class FloorHeatingCalculatorTests
     [Test]
     public async Task Calculate_RealReferenceTableRow_MatchesMAndQdol()
     {
-        // Reference row: Qпт=1860, r_пд=0.9054 -> Qc=2054.4, m=176.64, Qдол≈194.4.
-        // Deltas back-solved from the formulas so r_пд comes out to the reference's 0.9054.
         var input = new HeatingRoomInput
         {
             DeltaBetM = 0.015,
@@ -66,7 +64,6 @@ public class FloorHeatingCalculatorTests
 
         var result = FloorHeatingCalculator.Calculate(input);
 
-        // With no construction layers, resistance is purely the two surface coefficients.
         await Assert.That(result.RogM2KW).IsEqualTo(1.0 / 8.7).Within(1e-9);
         await Assert.That(result.RodM2KW).IsEqualTo(1.0 / 8.7).Within(1e-9);
         await Assert.That(result.RoM2KW).IsEqualTo(result.RogM2KW + result.RodM2KW).Within(1e-9);
@@ -75,8 +72,6 @@ public class FloorHeatingCalculatorTests
     [Test]
     public async Task Calculate_QdolCanBeNegative_WhenQcIsLessThanQpt()
     {
-        // A very high Qпт relative to the construction's own heat flow drives Qc < Qпт, so
-        // Qдол = Qc - Qпт goes negative — the formula doesn't clamp this, and callers shouldn't either.
         var input = new HeatingRoomInput
         {
             DeltaBetM = 0.015,

@@ -61,7 +61,6 @@ public partial class FloorPreviewControl : UserControl
         double drawableH = DrawCanvas.Height - 2 * CanvasPadding;
         double scale = Math.Min(drawableW / spanX, drawableH / spanY);
 
-        // DXF Y grows "up"; canvas Y grows down — flip so the drawing reads the right way round.
         Point ToScreen(double x, double y) => new(
             CanvasPadding + (x - minX) * scale,
             CanvasPadding + (maxY - y) * scale);
@@ -98,13 +97,8 @@ public partial class FloorPreviewControl : UserControl
     {
         double mathAngleRad = (90.0 - NorthDeg) * Math.PI / 180.0;
         double dxfDx = Math.Cos(mathAngleRad), dxfDy = Math.Sin(mathAngleRad);
-        double screenDx = dxfDx, screenDy = -dxfDy; // same Y-flip as ToScreen
+        double screenDx = dxfDx, screenDy = -dxfDy;
 
-        // Anchor needs enough clearance for the label to stay inside the canvas (which clips) in
-        // every direction the arrow can point (North=0 sends it straight up, North=180 straight
-        // down, etc.) — not just the corner position that happened to work for one specific angle.
-        // Line length 14 + label gap 8 + the label's own half-extent (~9px for "N" at this size)
-        // means the label center can land up to ~31px from the anchor; 40 leaves a safe margin.
         const double cx = 40, cy = 40, len = 14;
         var line = new Line
         {

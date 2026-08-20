@@ -1802,3 +1802,55 @@ itself, at 99.5%/95.9% — a couple of defensive branches (e.g. the
 `cross == 0` exact-collinear-vertex case in `CountConvexCorners`) are
 untested edge cases with no known real-world trigger, not gaps in the
 tested behavior.
+
+---
+
+## 2026-08-20 (same day) — All non-summary comments removed from the
+codebase, branch `chore/strip-comments`
+
+**Decision:** per explicit user request, every plain `//` comment and
+XAML `<!-- -->` comment was removed from `src/` and `tests/`. `///
+<summary>...</summary>` XML doc comments were kept as-is — confirmed
+first (via a targeted grep for `<param>`/`<returns>`/`<remarks>`/etc.)
+that every `///` block in this codebase is already just a `<summary>`
+(no separate doc sections to selectively drop), so "keep the summary"
+reduces cleanly to "keep every `///` line untouched."
+
+**Mechanism:** a throwaway Roslyn-based console tool (not committed —
+lived in the session scratchpad only) parsed each `.cs` file into a
+syntax tree and rewrote token trivia: leading-trivia line-groups whose
+only content was a plain `//` comment were dropped entirely (comment,
+its indentation, and its newline — so no blank line is left behind);
+trailing same-line `// ...` comments had just the comment (and the
+whitespace immediately before it) stripped, keeping the line's own
+end-of-line trivia intact so two source lines are never merged
+together. `///` trivia was left untouched by construction (a different
+`SyntaxKind`, never matched by the plain-comment check). A regex pass
+over the final text then collapsed any 3+ consecutive blank lines left
+behind by whole-block removals down to one. Chosen over a naive
+line-based regex specifically because the codebase has several string
+literals containing `//` (e.g. GitHub Releases URLs) that a text-level
+approach could have corrupted; a real C# parser can't confuse a
+comment with a string literal's contents. Verified on two representative
+files first (`FloorProcessor.cs`, `WallGeometryClassifier.cs`) before
+running against every real source file. The 4 XAML files with `<!--
+-->` section-label comments (`Strings.En/Bg.xaml`, `CompassControl.xaml`,
+`InstructionsPage.xaml`) were handled separately with a plain line-delete
+`sed` pass, since XAML has no analogous "doc comment" concept to
+protect.
+
+**Verified:** `dotnet build` clean (0 warnings) and all 129 tests still
+passing after the rewrite — confirms the trivia-only rewrite changed no
+executable semantics. Spot-checked several diffs by hand (`FloorProcessor.cs`,
+`ExteriorClassifier.cs`, `PerpendicularLabeledLineStrategy.cs`,
+`OpeningExtractorTests.cs`) to confirm every removed block was a plain
+`//` comment and every `/// <summary>` block survived intact.
+
+**Note:** this session found that `main` had already advanced past what
+this session last knew about — both the dark-mode-fix PR and the
+test-coverage PR (prepared in earlier turns of this session) had been
+merged on GitHub and pulled locally, moving the working tree's branch
+from `feature/floor-heating` to `main` between turns. This comment-removal
+work was branched from that already-updated `main`, not from
+`feature/floor-heating`, since both of that branch's commits are now
+part of `main` anyway.

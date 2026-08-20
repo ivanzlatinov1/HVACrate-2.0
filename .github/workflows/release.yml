@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore HVACrate2.slnx
+
+      - name: Build
+        run: dotnet build HVACrate2.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet exec tests/HVACrate2.Core.Tests/bin/Release/net10.0/HVACrate2.Core.Tests.dll
+          --report-trx
+          --report-trx-filename test-results.trx
+          --results-directory ./TestResults
+
+  release:
+    runs-on: windows-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish single-file self-contained exe
+        run: >
+          dotnet publish src/HVACrate2.App
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          --output ./publish
+
+      - name: Zip published output
+        # HVACrate2.exe alone isn't runnable standalone: WPF's native interop DLLs are folded into
+        # it via IncludeNativeLibrariesForSelfExtract, but the bundled Assets/Template.xlsx is a
+        # loose CopyToOutputDirectory file the app reads from disk next to the exe, not something
+        # single-file publishing can embed. Ship the whole publish folder as one zip instead of a
+        # bare exe so the download is still one link/one file for the user.
+        run: Compress-Archive -Path ./publish/* -DestinationPath ./HVACrate2-win-x64.zip
+        shell: pwsh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./HVACrate2-win-x64.zip
+          generate_release_notes: true

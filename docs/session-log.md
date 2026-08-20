@@ -940,3 +940,80 @@ using TUnit before publishing the pending pull request.
   request from `feature/floor-heating` to `main` is still pending —
   `gh` CLI unavailable in this environment, PR must be opened manually.
 - Everything else carried over from Session 15/14 unchanged.
+
+---
+
+## 2026-08-20 (same day) — Session 17 (branches `chore/strip-comments`,
+`feature/release-automation`)
+
+**Context:** continuation of the same day. Two unrelated requests:
+strip non-summary comments from the codebase, then set up Phase 4
+(packaging/distribution) so the app is downloadable via GitHub Releases.
+
+**Also discovered this session:** `main` had already advanced since the
+last turn — both the dark-mode-fix PR and the test-coverage PR (from
+earlier turns) had been merged on GitHub and pulled locally, moving the
+working tree from `feature/floor-heating` to `main`. All subsequent
+work this session branched from that already-updated `main`.
+
+**Done:**
+
+- Removed every plain `//` comment and XAML `<!-- -->` comment from
+  `src/`/`tests/`, keeping `/// <summary>` doc comments intact, via a
+  throwaway Roslyn-based trivia rewrite (safe against string literals
+  containing `//`, e.g. GitHub Releases URLs — a text-level regex could
+  have corrupted those). `dotnet build` clean, all 129 tests still pass.
+  Branch `chore/strip-comments`, pushed; PR link handed to the user
+  (`gh` CLI still unavailable).
+- Entered plan mode for Phase 4 (packaging/distribution): an Explore
+  pass plus an `AskUserQuestion` round settled on a tag-triggered
+  GitHub Actions release workflow (not a one-off manual publish) and a
+  `v1.0.0`/`HVACrate2.exe` naming scheme (not reusing the unrelated
+  `Pre-Release` video-hosting tag).
+- `HVACrate2.App.csproj`: added `AssemblyName=HVACrate2`,
+  `Version=1.0.0`.
+- New `.github/workflows/release.yml`: tag-triggered (`v*`), runs the
+  existing test suite first, then publishes and creates the GitHub
+  Release via `softprops/action-gh-release@v2` — every future release
+  is now a two-command action (`git tag` + `git push`), no `gh` CLI or
+  manual upload needed ever again.
+- **Two real packaging bugs caught by actually running the published
+  output locally, not just building it:** (1) `PublishSingleFile`
+  alone still leaves several WPF native interop DLLs as separate files
+  next to the exe — fixed with `-p:IncludeNativeLibrariesForSelfExtract=true`;
+  (2) the bundled `Assets/Template.xlsx` can't be embedded into a
+  single-file publish at all (it's a loose disk file the app reads at
+  runtime) — worked around by having the release workflow zip the
+  whole publish output instead of uploading a bare exe. See
+  decisions.md, 2026-08-20 (Release automation session), for the full
+  investigation.
+- End-to-end verified: published locally with the exact flags/zip
+  command the workflow uses, extracted to a **fresh** folder, and
+  launched `HVACrate2.exe` from there — confirmed it starts standalone
+  with no `dotnet`/SDK involved (window title "HVACrate 2.0"). This is
+  the closest available substitute for Phase 4's "test on a clean
+  machine" item without an actual clean VM.
+- Updated `CLAUDE.md` (fixed a stale `src/HVACrate.App` path typo in
+  the documented publish command, added a new "Publishing a release"
+  section) and `docs/plan.md` Phase 4 checkboxes.
+- Deliberately did **not** push the `v1.0.0` tag that triggers the
+  first real public release — handed the exact commands to the user
+  instead, since creating a public GitHub Release is their call to
+  make, not something to do autonomously.
+- Branch `feature/release-automation`, pushed; PR link handed to the
+  user.
+
+**Open for the next session:**
+
+- Both `chore/strip-comments` and `feature/release-automation` still
+  need PRs opened manually (`gh` CLI unavailable) and merged.
+- The user still needs to push the `v1.0.0` tag to trigger the actual
+  first release, then link
+  `https://github.com/ivanzlatinov1/HVACrate-2.0/releases/latest/download/HVACrate2-win-x64.zip`
+  from their static website — the only remaining Phase 4 items, both
+  outside what this session could do autonomously.
+- A literal clean-VM test of the published exe is still open, not
+  something this session's environment could perform.
+- `test/core-coverage-85` (from the previous session) is now moot as a
+  separate merge target — already part of `main` via the earlier PR
+  merge discovered this session.

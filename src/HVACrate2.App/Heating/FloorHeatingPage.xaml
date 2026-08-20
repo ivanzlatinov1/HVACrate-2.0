@@ -1,0 +1,141 @@
+<Page x:Class="HVACrate2.App.Heating.FloorHeatingPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      mc:Ignorable="d"
+      Title="Floor Heating"
+      Background="{DynamicResource PageBackgroundBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <Button Content="{DynamicResource Str_Back}" Style="{StaticResource SecondaryButtonStyle}"
+                    Padding="12,6" FontSize="13"
+                    HorizontalAlignment="Left" Click="OnBackClick" />
+            <TextBlock x:Name="TitleText" Text="Floor Heating" FontSize="26" FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       HorizontalAlignment="Center" />
+        </DockPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <ItemsControl x:Name="FloorsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource CardBackgroundBrush}" CornerRadius="10" Padding="18"
+                                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,12">
+                                        <Button Content="{DynamicResource Str_Heating_RemoveFloor}" Style="{StaticResource SecondaryButtonStyle}"
+                                                Padding="10,6" FontSize="12" DockPanel.Dock="Right"
+                                                Tag="{Binding}" Click="OnRemoveFloorClick" />
+                                        <TextBlock Text="{Binding FloorLabel}"
+                                                   FontSize="18" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </DockPanel>
+
+                                    <ItemsControl ItemsSource="{Binding Rooms}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource PageBackgroundBrush}" CornerRadius="8" Padding="14"
+                                                        BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" Margin="0,0,0,10">
+                                                    <StackPanel>
+                                                        <DockPanel Margin="0,0,0,10">
+                                                            <Button Content="{DynamicResource Str_Heating_RemoveRoom}" Style="{StaticResource SecondaryButtonStyle}"
+                                                                    Padding="8,4" FontSize="11" DockPanel.Dock="Right"
+                                                                    Tag="{Binding}" Click="OnRemoveRoomClick" />
+                                                            <TextBlock Text="{Binding RoomNumber, StringFormat='Room {0}'}"
+                                                                       FontSize="15" FontWeight="SemiBold"
+                                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                        </DockPanel>
+
+                                                        <UniformGrid Columns="4" Margin="0,0,0,10">
+                                                            <StackPanel Margin="0,0,10,8">
+                                                                <TextBlock Text="&#948;бет (m)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                <TextBox Padding="6,4" Text="{Binding DeltaBetText, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="0,0,10,8">
+                                                                <TextBlock Text="&#948;зам-под (m)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                <TextBox Padding="6,4" Text="{Binding DeltaZamPodText, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="0,0,10,8">
+                                                                <TextBlock Text="&#948;тер (m)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                <TextBox Padding="6,4" Text="{Binding DeltaTerText, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="0,0,0,8">
+                                                                <TextBlock Text="&#948;изол (m)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                <TextBox Padding="6,4" Text="{Binding DeltaIzolText, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="0,0,10,0">
+                                                                <TextBlock Text="&#948;плоч (m)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                <TextBox Padding="6,4" Text="{Binding DeltaPlochText, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="0,0,10,0">
+                                                                <TextBlock Text="&#948;зам-таван (m)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                <TextBox Padding="6,4" Text="{Binding DeltaZamTavText, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                            <StackPanel Margin="0,0,10,0">
+                                                                <TextBlock Text="Qпт (W)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                <TextBox Padding="6,4" Text="{Binding QptText, UpdateSourceTrigger=PropertyChanged}" />
+                                                            </StackPanel>
+                                                        </UniformGrid>
+
+                                                        <StackPanel Visibility="{Binding ResultVisibility}">
+                                                            <Border BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Margin="0,0,0,8" />
+                                                            <UniformGrid Columns="5">
+                                                                <StackPanel Margin="0,0,10,0">
+                                                                    <TextBlock Text="Rог (m2K/W)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                    <TextBlock Text="{Binding RogText}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" />
+                                                                </StackPanel>
+                                                                <StackPanel Margin="0,0,10,0">
+                                                                    <TextBlock Text="Rод (m2K/W)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                    <TextBlock Text="{Binding RodText}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" />
+                                                                </StackPanel>
+                                                                <StackPanel Margin="0,0,10,0">
+                                                                    <TextBlock Text="Ro (m2K/W)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                    <TextBlock Text="{Binding RoText}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" />
+                                                                </StackPanel>
+                                                                <StackPanel Margin="0,0,10,0">
+                                                                    <TextBlock Text="r_пд" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                    <TextBlock Text="{Binding RPdText}" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold" />
+                                                                </StackPanel>
+                                                                <StackPanel>
+                                                                    <TextBlock Text="Qc (W)" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                                                    <TextBlock Text="{Binding QcText}" Foreground="{DynamicResource AccentBrush}" FontWeight="Bold" />
+                                                                </StackPanel>
+                                                            </UniformGrid>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Button Content="{DynamicResource Str_Heating_AddRoom}" Style="{StaticResource SecondaryButtonStyle}"
+                                            HorizontalAlignment="Left" Padding="12,6" FontSize="12"
+                                            Tag="{Binding}" Click="OnAddRoomClick" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button Content="{DynamicResource Str_Heating_AddFloor}" Style="{StaticResource SecondaryButtonStyle}"
+                        HorizontalAlignment="Left" Padding="14,8"
+                        Click="OnAddFloorClick" Margin="0,0,0,20" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,0">
+            <TextBlock x:Name="StatusText" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,10"
+                       TextWrapping="Wrap" Visibility="Collapsed" />
+            <Button Content="{DynamicResource Str_Heating_Calculate}" Style="{StaticResource NavButtonStyle}"
+                    Padding="20,12" HorizontalAlignment="Left" Click="OnCalculateClick" />
+        </StackPanel>
+    </Grid>
+</Page>

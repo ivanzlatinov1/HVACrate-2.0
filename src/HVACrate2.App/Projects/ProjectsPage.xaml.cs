@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using HVACrate2.App.Shared;
 using HVACrate2.App.Start;
-using HVACrate2.App.Work;
 
 namespace HVACrate2.App.Projects;
 
@@ -33,13 +33,17 @@ public partial class ProjectsPage : Page
 
         var project = ProjectStore.AddProject(name);
         NewProjectNameBox.Text = "";
-        NavigationService?.Navigate(new WorkPage(project));
+        ProjectStore.CurrentProject = project;
+        NavigationService?.Navigate(new StartPage());
     }
 
     private void OnOpenProjectClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: ProjectRecord project })
-            NavigationService?.Navigate(new WorkPage(project));
+        {
+            ProjectStore.CurrentProject = project;
+            NavigationService?.Navigate(new StartPage());
+        }
     }
 
     private void OnDeleteProjectClick(object sender, RoutedEventArgs e)
@@ -48,8 +52,8 @@ public partial class ProjectsPage : Page
             return;
 
         var result = MessageBox.Show(
-            $"Delete project \"{project.Name}\"? This only removes it from the list — no files are deleted.",
-            "Delete project", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            Loc.Get("Str_Projects_DeleteConfirmMessage", project.Name),
+            Loc.Get("Str_Projects_DeleteConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         if (result == MessageBoxResult.Yes)
             ProjectStore.DeleteProject(project);

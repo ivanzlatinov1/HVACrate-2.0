@@ -1074,3 +1074,665 @@ solution root, all 3 projects including the `HVACrate2.Core.Tests`
 scaffold) clean, one pre-existing unrelated placeholder-test warning
 (`TUnitAssertions0005` on the scaffold `Tests.cs`, predates this
 session, not touched).
+
+---
+
+## 2026-08-10 — Both flagged discrepancies from 2026-08-09 closed by
+user verification against the real CAD file
+
+**0.4m×2.46m window (`floor2.dxf`/`floor3.dxf`):** user checked the
+original CAD file at the flagged location and confirmed the window is
+real — the earlier "does not exist" report was the user's own mistake,
+not a drawing or extraction problem. Matches the investigation's
+conclusion (real window body geometry, no duplicates, no hidden flags).
+Closed, no code change.
+
+**90×210cm door height (`floor3.dxf`, reference implied 208cm):** user
+confirmed this was a bug in the source drawing/reference, not in
+extraction — the DXF's own marker data (`AC_MarkerText_3` = 210,
+verbatim on every w=90 door marker in the file) stands as correct.
+Closed, no code change.
+
+---
+
+## 2026-08-10 — Floor Heating: a new, independent calculation track;
+project-gated Start page; architecture decisions
+
+**Context:** the user requested an entirely new feature not in
+CLAUDE.md's original scope — per-room floor heating heat-flow
+calculation, alongside the existing Energy Efficiency (DXF→Excel) flow.
+Given the scope (new domain model, new page, a restructured Start menu,
+a project-selection concept that didn't exist before), this went through
+`EnterPlanMode` first, including an `AskUserQuestion` round to lock three
+open design forks before writing code.
+
+**Project selection/gating — "select & return to Start," not a
+project hub page.** Considered two shapes: (a) opening a project in
+Project Management sets it "current" and returns to the Start page,
+whose Energy Efficiency/Floor Heating buttons are then enabled and
+route into that project; (b) opening a project goes to a per-project
+hub page with its own buttons. User picked (a). Implemented as
+`ProjectStore.CurrentProject` (nullable static, cleared by
+`DeleteProject` if the deleted project was current); `ProjectsPage`'s
+Create/Open now set it and navigate back to `StartPage` instead of
+jumping straight into `WorkPage` as before. `StartPage` reads
+`CurrentProject` in its constructor to enable/disable the two gated
+buttons and show a "Current project: X" / "No project selected"
+subtitle. `NavButtonStyle`/`SecondaryButtonStyle` in `App.xaml` had no
+`IsEnabled` visual state at all before this — added a dimmed-opacity
+trigger to both, otherwise disabled buttons would have looked identical
+to enabled ones.
+
+**Floor Heating's floor/room list is independent of the DXF-driven
+floors on the Energy Efficiency side.** No DXF is involved in floor
+heating at all — the user adds floors and rooms manually. Considered
+reusing the Energy Efficiency floor count instead; rejected by the user
+since a project may not have DXF floors set up yet, and the two tracks
+don't need to agree on floor count.
+
+**Deltas and Qпт are entered per room, not per floor.** Matches how the
+formulas are actually consumed (every room has its own construction and
+its own required heat) and the user's own phrasing ("the required heat
+of a room").
+
+**Formulas, from user-supplied reference-sheet screenshots** (not yet
+committed anywhere as source files — only transcribed into
+`FloorHeatingCalculator.cs`):
+
+```
+Rог = 1/αпод + δбет/λбет + δзам_под/λзам_под + δтер/λтер     [m²K/W]
+Rод = 1/αтав + δбет/λбет + δизол/λизол + δплоч/λплоч + δзам_тав/λзам_тав  [m²K/W]
+Ro  = Rог + Rод
+r_пд = Rод / Ro
+Qc  = Qпт / r_пд                                              [W]
+m   = 3600 · Qc / 41870                                       [kg/h]
+Qдол = Qc − Qпт                                                [W]
+```
+
+All eight physical constants (`αпод`, `λбет`, `λзам_под`, `λтер`,
+`αтав`, `λизол`, `λплоч`, `λзам_тав`) are hardcoded per explicit user
+instruction — only the deltas (meters) and Qпт (watts) are user input.
+Note `δбет` (half the pipe-screed thickness) is the *same* physical
+layer in both Rог and Rод — one input, reused in both formulas, not two
+separate fields that happen to share a name.
+
+**Verified against the user's own reference numbers, not just unit
+logic:** the worked example in the screenshots (Ro1 = 0.1408 + 1.3473 =
+1.4881 m²K/W) reproduces exactly from the example delta values shown.
+A later real reference-table row (Qпт=1860, r_пд=0.9054 → Qc=2054.4,
+m=176.64, Qдол≈194.4) also reproduces exactly once m/Qдол were added —
+confirms the `41870` constant and the Qдол formula, not just Ro.
+
+**Results moved to a separate page (`HeatingResultsPage`), split from
+the data-entry page (`FloorHeatingPage`), per explicit user request**
+mid-session — the first implementation showed the results table inline
+on the same page as the input rows; the user wanted the split instead
+(mirrors the existing Energy Efficiency `WorkPage`/`PreviewPage` split).
+`FloorHeatingPage`'s "Calculate & View Results" now validates every
+room, computes results, and navigates to `HeatingResultsPage`, which
+takes just the `ProjectRecord` and renders one `DataGrid` per floor.
+Back on the results page uses `NavigationService.GoBack()`, matching
+`PreviewPage`'s existing convention.
+
+**Floor/room data persistence — reversed an earlier assumption in the
+same session.** The first implementation deliberately kept the
+floor/room list local to the `FloorHeatingPage` instance (matching how
+`WorkPage`'s own DXF-floor list already worked, per the original design
+note). The user explicitly rejected this once they saw it: re-entering
+Floor Heating for a project they'd already filled in showed blank rows.
+Fixed by moving the collection onto `ProjectRecord.HeatingFloors`
+(`ObservableCollection<HeatingFloorViewModel>`) — since `ProjectRecord`
+instances are shared/reused via `ProjectStore`, the same object is
+handed to `FloorHeatingPage` every time the user re-enters, so its data
+now survives navigating away and back (still lost on app restart, same
+as every other in-memory project field — not a new gap, consistent with
+the existing "in-memory only" project-store decision from 2026-08-05).
+
+**Explicitly deferred, not a code bug or oversight:** the feature is
+incomplete because the user doesn't yet have enough information to spec
+the rest of it — a second table "for the serpentines for each room" was
+requested but never given formulas/columns, and whether floor heating
+needs any Excel output (vs. staying in-app-only, unlike Energy
+Efficiency) is undecided. Picked up again in a future session once the
+user has the missing reference material.
+
+---
+
+## 2026-08-10 — Language toggle (English/Bulgarian): reused
+`ThemeManager`'s pattern exactly; formula notation stays fixed by
+design, not an oversight
+
+**Context:** branched `feature/language-toggle` off `feature/floor-heating`
+(not `main`) for a persistent EN/BG toggle next to the existing theme
+toggle. Sized the scope first (grepped every hardcoded `Text=`/`Content=`
+in `HVACrate2.App` — ~80 XAML occurrences across 9 files, ~30 code-behind
+occurrences across 8 files) before entering plan mode, then ran an
+`AskUserQuestion` round to settle two real scope forks before writing
+code.
+
+**Formula/domain notation stays fixed in both languages — explicit user
+decision, not an oversight.** Rог, Rод, r_пд, Qc, Qпт, Qдол, δ-symbols,
+room labels ("пом.01"), and the wall/opening compass-direction letters
+`HVACrate2.Core` already produces (С/И/Ю/З/etc.) are calculation
+notation, not UI prose — and the underlying Excel template is always
+Bulgarian regardless of app language, so translating the app's own
+formula labels away from what the template/reference sheets use would
+make cross-checking harder, not easier. The compass *dial* widget's
+fixed N/E/S/W-style labels (`CompassControl.xaml`) were treated the same
+way by the same reasoning, though this specific control wasn't asked
+about directly. Only the Work page's direction *dropdown*
+(`CompassDirectionOption`) translates, since that's a UI input control
+a user reads and picks from, not a calculation result.
+
+**Instructions page's full step-by-step prose is in scope, not
+deferred** — the one place the user explicitly asked for more than
+short UI chrome. All 14 numbered steps and both part headings across
+both languages, plus the "(mandatory)" emphasis runs, translated.
+
+**Mechanism — reused `Shared/ThemeManager.cs`'s pattern byte-for-byte,
+not a new architecture.** `ThemeManager` already solved "a setting that
+must apply live, everywhere, without restarting the app": swap a merged
+`ResourceDictionary`, everything themed uses `DynamicResource` so it
+rebinds live. `LocalizationManager` does the same with
+`Strings.En.xaml`/`Strings.Bg.xaml` (`sys:String` entries, same
+convention `Theme.Light.xaml` already used for `TitleShadowDepth`)
+instead of brushes. `Shared/Loc.cs` is a two-line static helper
+(`Application.Current.FindResource(key)` + a `string.Format` overload)
+for the cases `DynamicResource` can't reach: dynamically-built text
+(`"Floors — " + project.Name`), `MessageBox` content, and
+`CompassDirectionOption.ToString()`.
+
+**Real technical snag found and solved: `StringFormat` can't be
+`DynamicResource`-bound.** Every "Floor {0}" label
+(`WorkPage`/`PreviewPage`/`FloorHeatingPage`/`HeatingResultsPage`) used
+`Text="{Binding FloorNumber, StringFormat='Floor {0}'}"` — but
+`StringFormat` is evaluated at XAML parse time, not a runtime dependency
+property, so embedding a translated word inside it can't rebind live no
+matter what. Fixed uniformly by adding a computed `FloorLabel` property
+(`Loc.Get("Str_FloorLabel", FloorNumber)`) to every affected view model
+(`FloorRowViewModel`, `PreviewFloorViewModel`, `HeatingFloorViewModel`)
+and binding `Text="{Binding FloorLabel}"` instead — same pattern already
+used for `HeatingRoomViewModel.RoomLabel` ("пом.01"). Where the source
+view model already raises `PropertyChanged` on the underlying number
+(`HeatingFloorViewModel`), the setter now also raises `FloorLabel`; where
+it didn't (`FloorRowViewModel`'s `FloorNumber` was a bare
+get/set with no `Raise()` at all — a pre-existing quirk, not something
+this session introduced or was asked to fix), adding the computed
+property doesn't regress anything since nothing live-updated it before
+either.
+
+**Scope boundary, stated explicitly rather than silently accepted:**
+code-behind-computed text (page titles like `"Floors — {ProjectName}"`,
+error/status messages) reflects whatever language is active *at the
+moment it's set* — always correct for messages (generated fresh per
+click) and for titles set in a page's constructor (every page in this
+app is already reconstructed fresh on navigation, per the project's
+existing convention), but a language toggle mid-page won't retroactively
+rewrite already-computed title text without navigating away and back.
+Matches `ThemeChanged`'s own actual behavior today — it's declared but
+nothing subscribes to it, since `DynamicResource` already makes that
+unnecessary for anything XAML-bound; `LocalizationManager.LanguageChanged`
+was added for the same parity/future-use reason and is equally unused
+right now.
+
+**Repeated near-duplicate error messages unified into one parameterized
+key.** `FloorHeatingPage`'s seven per-field validation messages ("enter
+a valid δбет." / "δзам-под." / ... / "Qпт.") collapsed into one
+`Str_Heating_Err_Field = "Floor {0}, Room {1}: enter a valid {2}."`,
+with the fixed symbol name passed as the third argument — avoids seven
+near-identical resource keys differing only in one embedded symbol.
+
+**Verified:** `dotnet build` clean (0 warnings beyond the pre-existing
+test-scaffold one) after every stage; re-grepped every `Text=`/`Content=`
+in `HVACrate2.App` after finishing to confirm the only hardcoded strings
+left are the intentional fixed ones (formula notation, "HVACrate 2.0",
+dead `TitleText` XAML defaults immediately overwritten in every page's
+constructor, compass dial letters, and lone punctuation-only `Run`s).
+App launched and left running for the user to click through directly —
+no UI-automation tooling used this session either, matching the Floor
+Heating session's approach.
+
+**Merged into `feature/floor-heating`**, not `main` — the branch point,
+since `feature/floor-heating` itself is still unmerged.
+
+---
+
+## 2026-08-14 — Locale bug: `double.TryParse` without an explicit culture
+broke both typed decimal input and DXF marker-attribute parsing on
+non-`.`-decimal machines
+
+**Decision:** every place the app parsed a user-typed or DXF-sourced
+decimal number now normalizes `,`→`.` and parses with
+`NumberStyles.Float` + `CultureInfo.InvariantCulture` explicitly, instead
+of the default `double.TryParse(string, out double)` overload (which uses
+`NumberFormatInfo.CurrentInfo`, i.e. the OS locale).
+
+**Reason:** the user's machine is set to `bg-BG` (decimal separator `,`,
+group separator a space). `double.TryParse("2.5")` under that culture
+returns `false` outright — `.` isn't a recognized separator at all — so
+the Work page's height field rejected any decimal input while a bare
+integer like `"2"` parsed fine, which is exactly why it looked like "only
+accepts integers." The same unguarded `TryParse` pattern existed in three
+places: `FloorRowViewModel.TryGetHeightM`, `HeatingRoomViewModel.TryParse`
+(the six delta fields + Qпт), and `FloorProcessor`'s DXF marker-attribute
+width/height parsing. Confirmed directly: `[double]::TryParse('2.5', ...)`
+under `bg-BG` returns `false`.
+
+**Verified:** a throwaway console harness (`scratchpad/diag`, not
+committed) run under the machine's real `bg-BG` culture confirmed all
+three call sites now accept both `2.5` and `2,5` correctly.
+
+---
+
+## 2026-08-14 — Opening extraction rebuilt as a name-agnostic
+geometry/topology pipeline; the old `W Marker`/`D Marker` name-gated
+approach retired
+
+**Context:** the user supplied three new real floors
+(`samples/floor1-3.dxf`) for a first end-to-end test. Wall
+length/area/volume/corner count (all `OVK`-polygon-based) were correct,
+but **zero windows/doors were ever extracted** — confirmed directly (see
+below) — because these files use a third, structurally different export
+convention neither of the two previously-handled conventions covers: the
+whole drawing is one exploded `INSERT` block (`Drawing_1_1`), there are
+**no `W Marker`/`D Marker` `INSERT`+`ATTRIB` blocks at all**, dimension
+labels are bare `MText` pairs on a `Line` leader, and the wall layers are
+pure Bulgarian (`Стени - екстериор`/`Стени - интериор`), which also broke
+`WallTopology.IsWallLayer`'s English-only `"wall"` substring check — a
+"final decision" from 2026-08-09 that this real data has now overturned.
+
+**User's explicit direction, not a patch-in-a-fourth-convention fix:**
+stop depending on block/layer/marker **names** as the primary detection
+mechanism; detect openings from geometry and their spatial relationship
+to the building's exterior wall topology instead, with any recognizable
+name used only as a confidence hint. Full requirements (semantic output
+model, pluggable strategies, exterior/interior from topology not names,
+confidence/evidence per opening, never-silently-zero diagnostics,
+deduplication, dimension cross-validation, synthetic renamed-layer
+regression tests) captured in the approved plan
+(`C:\Users\ivanz\.claude\plans\harmonic-doodling-twilight.md`).
+
+**Two things kept deliberately as-is, not generalized away:**
+- **`OVK` stays the authoritative exterior-boundary source.** It is not
+  an arbitrary third-party CAD convention — it's this app's own
+  documented, user-authored step (the Instructions page tells every user
+  to trace it by hand before export). Reconstructing the boundary from
+  raw, unlabeled wall geometry instead was tried and rejected in the
+  project's very first session (2026-08-03) as too fragile without a
+  hand-drawn boundary; this session doesn't reopen that.
+- **Area/volume/wall-length/corner-count code is untouched.** User
+  confirmed these were already correct on the new samples — the bug was
+  scoped entirely to opening extraction.
+
+**Empirical grounding, measured directly on `floor1.dxf` before writing
+any pipeline code:**
+- Every `Стени - екстериор` (exterior wall) line lands within 0.25m of
+  the `OVK` boundary (100% of 303 sampled endpoints ≤0.3m); every
+  `Стени - интериор` (interior wall) line is ≥1.57m away — a clean,
+  name-independent gap, the same kind of "clean split, not a threshold
+  call" pattern this project has relied on before (see the 2026-08-09
+  `HostWallOwnsOvkNode` entry). This is what lets exterior/interior
+  classification work without ever reading the wall layer's name.
+- Each door/window marker in this file is one short `Line` (a leader,
+  ~0.25-0.9m long) with two `MText` labels (width, height) clustered near
+  one endpoint. The endpoint **farther** from the labels consistently
+  sits closer to the real door-body geometry than the label-side one
+  (e.g. 37.75 vs 50.78 raw units in sampled cases) — confirming it's the
+  wall-side tip, not the label anchor, and should be the candidate's
+  anchor point.
+- Confirmed **why** a fourth name-gated patch wasn't the right fix: even
+  after normalizing decimal parsing, the old code found zero markers on
+  these files because it only ever looked for `INSERT` blocks named
+  `W Marker`/`D Marker` — a structural check, not a parsing bug.
+
+**Architecture — pipeline replacing `FloorProcessor.ExtractOpeningsTouchingOvk`
+and superseding `WallTopology.cs`'s hop-tracing classifier** (new folder
+`src/HVACrate2.Core/Openings/`):
+
+1. `DxfEntityIndex.Build` — recursively flattens every `Line`/`Arc`/
+   `Polyline2D`/`Text`/`MText`/`Insert` to world-meter coordinates at
+   **arbitrary** `INSERT` nesting depth (composing each level's transform
+   via closures), not just the one-level special case the old code
+   handled — the actual structural reason `Drawing_1_1`'s single
+   top-level wrapper insert didn't block detection.
+2. `WallGeometryClassifier.CollectWallLikePoints` — a segment counts as
+   wall-like if its layer name hints at "wall" in one of a small
+   multilingual list (`WordHints.Wall`: en/bg/de/fr/it/es — confidence
+   only) **or** it lies within 0.4m of an `OVK` edge (the name-independent
+   signal that actually does the work, per the measurement above).
+3. Two independent `IOpeningCandidateStrategy` implementations, each
+   producing candidates with an evidence trail:
+   - `BlockAttributeStrategy` — generalizes both old `INSERT`+`ATTRIB`
+     conventions into one name-independent rule: any `INSERT`, at any
+     nesting depth, carrying ≥2 numeric `ATTRIB` values in a plausible
+     range (10-500cm) is a candidate. A marker/window/door name hint only
+     adds an evidence note. Looser exterior tolerance (2.5m) since a
+     detached annotation's own position isn't guaranteed to sit at the
+     wall — an explicitly acknowledged trade-off vs. the old full
+     topology-hop-tracing for that specific historical edge case (whose
+     original sample files no longer exist on disk to re-validate
+     against — see Verification below).
+   - `PerpendicularLabeledLineStrategy` — the primary signal, matching
+     the user's literal correction mid-planning ("an opening is a
+     perpendicular line to the OVK layer with two numbers next to the
+     line," replacing an earlier "gap in the wall run" idea that doesn't
+     hold for every file): a `Line` near-perpendicular (≥70°) to the
+     nearest `OVK` edge, short (0.05-1.5m — a real leader tick, not a
+     room-dimension chain), with exactly two numeric text labels
+     clustered both near one endpoint (≤0.6m) **and near each other**
+     (≤0.5m — this is what actually separates a marker's own paired
+     numbers from two unrelated dimension-chain labels that both happen
+     to sit within range of the same line; first cut without this check
+     produced 100+ obviously-wrong sub-0.5m-wide "openings" per floor
+     from generic dimension annotations elsewhere in the drawing). Anchor
+     = the far (wall-side) endpoint; tight exterior tolerance (0.8m),
+     since that anchor is already confirmed to sit at the real wall.
+4. `ExteriorClassifier` — **direct** distance from the candidate's own
+   anchor to the `OVK` boundary curve, tolerance per-candidate (set by
+   the strategy that produced it). An earlier version snapped each
+   candidate to the nearest wall-like point within an 8m search radius —
+   found to be a real bug, not a refinement: in a compact floor plan,
+   almost *any* point sits within 8m of *some* exterior wall, so that
+   check accepted nearly everything regardless of true proximity. Direct
+   distance against the boundary curve doesn't have this failure mode.
+5. `TypeClassifier` — best-effort Door/Window scoring from a nearby swing
+   arc or multiple nearby frame-like lines, plus word hints — corroborating
+   evidence only, never gates detection; has no effect on the Excel write
+   (windows/doors already share one combined table per `CLAUDE.md`).
+6. `OpeningDeduper` — merges candidates from different strategies
+   describing the same physical opening (position within 0.5m, same `OVK`
+   edge, width/height within 15%/0.1m).
+7. `OpeningExtractionDiagnostics` (new `Models/` type, on `FloorResult`) —
+   entities inspected, candidates per strategy, accepted/rejected counts
+   with reasons, and an explicit warning when accepted count is 0 despite
+   wall-like geometry existing. Surfaced on `PreviewPage` as a small
+   warning line per floor (`PreviewFloorViewModel.OpeningWarningVisibility`)
+   — the mechanism that would have caught this exact bug immediately
+   instead of a silently-empty table.
+
+**`Opening` model extended, additively:** `Type`, `Confidence`,
+`DimensionSource`, `Evidence` — existing consumers (`GroupOpenings`,
+`WriteOpeningsTable`, `FloorPreviewControl`) only ever read
+`WidthM`/`HeightM`/`Direction`/`PositionXM`/`PositionYM` and are
+unaffected.
+
+**`WallTopology.cs` deleted, not deprecated-in-place.** Confirmed (grep)
+its only caller was the retired `ExtractOpeningsTouchingOvk`; the
+hop-tracing machinery it existed for
+(`BuildWallRun`/`FindHostWallNodes`/`FindExteriorOvkPaths`/
+`AssignOvkEdgeIndex`/`HostWallOwnsOvkNode`) solved a problem — an
+unreliable *marker-label* position — that no longer exists once
+candidates are anchored at real geometry per the strategies above.
+
+**Verified:**
+- Direct pipeline run against all 3 real files (not just `dotnet build`):
+  floor1 46 openings / floor2 77 / floor3 76, all with plausible
+  width/height (0.47-1.8m / 0.62-2.83m) and all 8 compass directions
+  represented across the three floors. Before the fix: 0/0/0.
+  **Not independently verified against a reference count** — unlike the
+  original floor1-4 dataset, no manually-confirmed table exists for
+  these three files; flagged to the user to sanity-check the printed
+  per-size/per-direction counts against what they know of the real
+  building.
+- `samples/`'s older convention-A (`Wall_N_2`) and convention-B (Archicad
+  companion-object) sample files are no longer present on disk (confirmed
+  — `samples/` now only has `floor1-3.dxf`), so those two conventions
+  could only be regression-tested via synthetic in-memory documents this
+  session, not live files.
+- Added `tests/HVACrate2.Core.Tests/OpeningExtractionRegressionTests.cs`
+  (skips, doesn't fail, when a sample file isn't present — `samples/` is
+  gitignored/local-only per the 2026-08-05 decision) and
+  `SyntheticOpeningExtractionTests.cs` — minimal in-memory `DxfDocument`s
+  built via netDxf's document API with deliberately arbitrary layer/block
+  names (`Layer_ABC`, `Zorp_9`, `FOO1`/`FOO2` ATTRIB tags — never
+  "wall"/"window"/"door"/"marker" in any language), one per implemented
+  strategy plus one proving an interior-positioned candidate is correctly
+  rejected. `FloorProcessor.ProcessFloorFromDocument` added (public) as
+  the test entry point that accepts an already-constructed `DxfDocument`,
+  split out of `ProcessFloor` (which still just loads a file and calls
+  it) specifically so synthetic in-memory documents don't need a real
+  file on disk.
+- `dotnet build` clean (0 warnings, 0 errors) across all 3 projects.
+  `dotnet test` doesn't work on this SDK (`dotnet run --project
+  tests/HVACrate2.Core.Tests` instead — the new Microsoft.Testing.Platform
+  runner); all 7 tests pass (1 pre-existing placeholder + 3 real-sample
+  regressions + 3 synthetic).
+- App built and launched, left running for the user to click through the
+  real `Work → Extract & Preview` flow directly — no UI-automation
+  scripting this session.
+
+---
+
+## 2026-08-14 (same day, follow-up) — Opening extraction validated
+against a real reference table; two concrete over-counting bugs found and
+fixed
+
+**Context:** the user supplied their own manually-extracted reference
+`Топлотехника V6.0.16.xls` for the same building the 3 new samples
+belong to (converted to `.xlsx` via Excel COM automation the same way as
+the app's bundled template, since ClosedXML can't read legacy `.xls`).
+This is the first real ground truth for `floor1-3.dxf` — the initial
+46/77/76-openings result reported earlier the same session had no
+independent reference to check against. The reference's merged
+14-row/108-opening table revealed the new pipeline was **over-counting
+by ~1.84x** (199 raw openings across the 3 floors) — matching the user's
+own direct report ("much more than the one I have extracted manually...
+you extract windows that are not even existing or part of the OVK
+layer").
+
+**Bug 1 — the real root cause of most of the over-count: one physical
+opening detected multiple times, too far apart to position-dedupe.**
+Inspected the worst offender (`0.6×1.85`, 40 raw hits on `floor2.dxf`
+alone against a reference of 28 for the *combined* 3 floors) by printing
+each hit's evidence. Confirmed: a single real window's own body geometry
+(`Archicad Windows` layer — frame/jamb lines, not just the marker leader)
+has *multiple* short lines, each independently satisfying the
+perpendicular-line-with-two-numbers pattern, anchored at different points
+spread across the window's own width — often farther apart than
+`OpeningDeduper`'s 0.5m position tolerance, especially for wider openings
+(1.2-1.8m). **Fix:** `PerpendicularLabeledLineStrategy` now groups
+candidates by the *identity* of the two label (`MText`/`Text`) entities
+they matched — not by the resulting candidate's position — and keeps
+only the one whose tip lands closest to OVK per unique label pair. Two
+lines that matched the exact same two label objects are unambiguously
+annotating the same real opening, regardless of how far apart their tips
+land. This alone cut the raw total from 199 to 110 (reference: 108) and
+took 9 of 14 real opening sizes/direction-breakdowns to an **exact**
+match.
+
+**Bug 2 — a handful of false positives from geometry on layers that are
+unambiguously not a window/door.** The remaining ~5 spurious sizes (e.g.
+`0.47×0.62`, `0.47×1.51`, `1.22×1.8`) traced to real but *irrelevant*
+geometry that happened to coincidentally satisfy the geometric pattern: a
+furniture dimension callout (`Интериор - мебели`), generic
+room-dimension annotation lines (`ДИМЕНСИИ ...`), and an MEP/installations
+annotation (`Част-ИНСТАЛАЦИИ`) — each printed in evidence, not guessed.
+**Fix, consistent with the "names are hints, not requirements" design
+(not a reversal of it):** `WordHints.NonOpening` — a small, narrow,
+evidence-driven list (furniture/мебел, dimension/дименси,
+installation/инсталаци, interior/интериор) used as a **negative** hint.
+A hint lowering confidence/excluding a coincidental geometric match is
+the same kind of evidence the design already uses positively elsewhere
+(e.g. a "window" hint raising type confidence) — it doesn't gate
+detection for anything lacking a recognizable name, it only suppresses a
+match already contradicted by a name that *is* present and unambiguous.
+Applied in both `PerpendicularLabeledLineStrategy` and
+`BlockAttributeStrategy`. Caught and fixed a transliteration typo in the
+same change (`димензи` doesn't match the real Cyrillic spelling
+`дименсии` — Bulgarian уses с/S, not з/Z, for this word; verified via a
+direct string-match check before trusting the fix).
+
+**Result after both fixes:** 106 total openings (reference: 108) across
+the 3 floors — 9 of 14 real sizes match the reference **exactly**
+(including all 4 direction counts), the remaining rows are off by 1-3 in
+individual direction cells with matching or near-matching totals, and
+only one residual anomaly remains: a single `0.8×2.0m` opening on
+`floor3.dxf` (evidence: a genuine `Archicad Doors` body line, 0.59m from
+OVK, labeled `'200'/'80'`) that doesn't appear in the reference at all —
+plausibly a wrong-label-pairing near a real `0.8×2.45` door rather than a
+new distinct opening, not yet root-caused to a specific fix. Flagged to
+the user, not silently left in the diagnostics as "resolved."
+
+**Verified:** re-ran the same real-sample diagnostic comparison before
+committing the fix; `dotnet build` clean (0 warnings/errors); all 7
+existing tests (real-sample regression + synthetic name-independence)
+still pass unchanged — neither fix required touching the synthetic
+tests' fixture data, confirming they didn't rely on the specific bugs
+being fixed.
+
+---
+
+## 2026-08-14 (same day, second follow-up) — the residual `0.8×2.0`
+false positive root-caused and fixed: exterior classification needed a
+wall-*backing* check, not just an OVK-*distance* check
+
+**Context:** user pointed at the specific real drawing (a screenshot of
+the DXF around the flagged opening) and confirmed directly: it's a door
+between a room and a balcony — an interior partition, not an exterior
+opening — and said to fix it, not just note it.
+
+**Root cause, confirmed by direct geometry inspection (not guessed):**
+the door's tip sits ~0.00-0.12m from its real host wall, on-layer
+`Стени - интериор_Pen_No__27` — genuinely interior. But the *nearest
+point on the OVK curve* to that same tip is only 0.59m away, because a
+real exterior wall happens to run close by (a balcony recess brings
+interior and exterior wall systems into close proximity). Distance to
+the abstract OVK curve alone cannot tell "near the boundary" apart from
+"embedded in the wall that actually forms the boundary" — this is
+exactly the distinction the deleted `WallTopology.cs` used a full
+connectivity graph to make; this session's simplified geometry-first
+design didn't have an equivalent until now.
+
+**Three additions to `ExteriorClassifier`/`WallGeometryClassifier`, each
+found necessary by testing against this real case in turn — not designed
+in one pass:**
+
+1. **Wall-backing check, segment-based.** `WallGeometryClassifier` now
+   requires **both** endpoints of a wall-layer segment to sit within
+   0.4m of OVK (not name-hinted — see the interior/exterior naming bug
+   below) before it counts as "wall-like", and returns whole segments
+   (not just vertices) so the backing check can measure true
+   point-to-*segment* distance the same way OVK distance already works
+   — a candidate sitting mid-wall, far from either endpoint, needs this;
+   point-to-vertex-only broke a synthetic test immediately (caught before
+   this shipped, not after). Requiring both endpoints near OVK (not just
+   one) is deliberate: a single near-OVK endpoint isn't enough, since an
+   interior partition merely joining an exterior wall at a T-junction
+   shares exactly that one corner point with it — confirmed this was
+   real by testing a "single point" version first, which still passed
+   the flagged door (its interior wall's far endpoint, where it meets the
+   exterior wall, is trivially close to OVK).
+2. **The wall-name-hint path in `WallGeometryClassifier` was itself a
+   bug, found while building the check above.** It accepted a segment as
+   "wall-like" if its layer name merely hinted at "wall" in any language
+   — but Bulgarian "стен" matches both `Стени - екстериор` and
+   `Стени - интериор` equally, since the word doesn't distinguish
+   interior from exterior. That let the flagged door's own interior wall
+   count as valid backing. Removed the name-hint path entirely; proximity
+   to OVK is the only signal now (matches the already-validated 0.25m/
+   1.57m+ real-data gap between exterior and interior walls).
+3. **`WallGeometryClassifier.CollectExplicitInteriorSegments` +
+   `ExteriorClassifier`'s third check.** Segment-based backing alone
+   still passed the flagged door: the nearest exterior wall's own corner
+   geometry (not the wall the door sits in) landed within the 0.5m
+   backing tolerance. Distance-threshold tightening to exclude it was
+   tried (0.25m) and reverted — it dropped the grand total from 106 to 97
+   and exact-match rows from 9/14 to 7/14, i.e. it broke more
+   genuinely-correct matches than it fixed, because the bad case (0.29m)
+   and several good cases sit too close together in raw distance for any
+   single threshold to separate. Added a **targeted, name-based
+   override** instead: if a wall explicitly labeled interior
+   (`WordHints.ExplicitInterior` = "interior"/"интериор" — a narrow
+   subset of the existing `NonOpening` list, used here as an unambiguous
+   positive signal rather than a broad exclusion) sits *meaningfully*
+   closer to the candidate than the nearest confirmed exterior-forming
+   wall, that interior wall is treated as the real host. A bare "closer
+   at all" comparison over-triggered near real corners (where an interior
+   partition legitimately meets the exterior wall right next to a
+   genuine opening) — dropped the total to 101 and exact matches to
+   9/14. Added a 0.15m margin requirement (only override on a *clear*
+   case, not a near-tie) — recovered to the best result yet.
+
+**Final result this round:** 104 openings vs. the 108-opening reference
+— **10 of 14 sizes now match exactly** (up from 9), and the flagged
+`0.8×2.0` balcony-door false positive is gone. This uses the existing
+"names are hints, not requirements" design faithfully: the override only
+fires when an explicit, unambiguous name is present and gives a clear
+signal; it does nothing on a file with no such naming convention, and it
+never gates whether an opening can be *detected* — only whether an
+already-detected candidate's host-wall ambiguity gets resolved.
+
+**Verified:** `dotnet build` clean; all 7 tests pass (including the
+synthetic test that briefly broke when backing switched to point-based
+distance, before the segment-based fix); full 3-floor comparison re-run
+against the same reference table after every intermediate change, not
+just at the end, to catch regressions immediately rather than compounding
+them (this is exactly what caught the 0.25m-tolerance and
+bare-closer-than regressions before either was left in place).
+
+---
+
+## 2026-08-14 (same day) — Preview page north-arrow rendering bug: fixed
+anchor position clipped the "N" label for some north angles
+
+**Context:** user circled a screenshot of the 2D floor preview showing a
+stray gray line fragment in the top-left corner instead of a proper
+north arrow + "N" label.
+
+**Root cause:** `FloorPreviewControl.DrawNorthArrow` anchored the arrow
+at a fixed `(20, 20)` and placed the "N" label further out along the
+arrow's direction. For `NorthDeg = 0` (arrow pointing straight up), the
+label's computed Y coordinate is `20 - 22 - 7 = -9` — outside the
+canvas's `[0, 300]` bounds. `DrawCanvas` has `ClipToBounds="True"`, so
+the label is silently clipped; only a short line fragment (which stayed
+within bounds) remained visible, exactly matching what was circled. The
+anchor position had never been checked against every possible north
+angle, only whichever angle the floors tested so far happened to use.
+
+**Fix:** moved the anchor to `(40, 40)` — enough clearance (arrow length
+14 + label gap 8 + the label's own ~9px half-extent ≈ 31px worst case)
+that the label stays inside the canvas regardless of which direction the
+arrow points. `dotnet build` clean.
+
+---
+
+## 2026-08-20 — Floor Heating "wrong results" report: calculator confirmed
+correct; real bug was `HeatingResultsPage`'s `DataGrid` unreadable in dark
+mode
+
+**Context:** user reported the floor-heating calculation was producing
+wrong numbers for a specific set of test deltas (δбет‑под=0.015,
+δзам=0.01, δтер=0.005, δбет‑таван=0.015, δизол=0.03, δплоч=0.4,
+δзам=0.01), expecting Rог=0.140802, Rод=1.3473, Ro=1.4881.
+
+**Investigated by hand-computing `FloorHeatingCalculator.Calculate`**
+against the six physical deltas the model actually accepts (δбет=0.015,
+δзам‑под=0.01, δтер=0.005, δизол=0.03, δплоч=0.4, δзам‑таван=0.01):
+reproduces 0.140802 / 1.347277 / 1.488079 exactly. **Conclusion: the
+calculator and formula wiring are correct, not a bug** — the user
+confirmed this once shown the arithmetic. (The extra `δбет‑таван` value
+in the report has no separate field by design — see the 2026-08-10 entry
+above — δбет is one shared input; this was never root-caused further
+since the user confirmed the calculation itself was fine.)
+
+**Real, separate bug found and fixed: `HeatingResultsPage`'s results
+`DataGrid` was unreadable in dark mode.** The `DataGrid` set
+`Background`/`Foreground`/`RowBackground`/`BorderBrush` at the
+`DataGrid` level via `DynamicResource`, but WPF's default
+`DataGridCell`/`DataGridColumnHeader` control templates don't inherit
+`Foreground` from the parent `DataGrid` — they fall back to
+`SystemColors`-based defaults, which stayed dark/near-black regardless
+of theme. In light mode this happened to still read fine (dark text on
+the app's light card background); in dark mode the cell text became
+near-invisible against the dark card background. Fixed by adding
+explicit `DataGrid.Resources` styles for `DataGridCell` (Foreground,
+transparent Background so `RowBackground` shows through, themed
+selection colors) and `DataGridColumnHeader` (Background/Foreground/
+BorderBrush, all `DynamicResource`-bound to the existing theme brushes),
+plus `AlternatingRowBackground`/`HorizontalGridLinesBrush`/
+`VerticalGridLinesBrush` for full theme consistency. This is the first
+`DataGrid` in the app (Energy Efficiency's results use plain
+`TextBlock`s, not a grid), so this styling gap hadn't been hit before.
+`dotnet build` clean. Not verified with a live screenshot — no desktop
+UI screenshot tool was available in this session, only build-level
+verification.

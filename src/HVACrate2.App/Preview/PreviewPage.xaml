@@ -16,10 +16,10 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
+            <Button Content="{DynamicResource Str_Back}" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
-            <TextBlock Text="Review before writing Excel" FontSize="26" FontWeight="Bold"
+            <TextBlock Text="{DynamicResource Str_Preview_Title}" FontSize="26" FontWeight="Bold"
                        Foreground="{DynamicResource TextPrimaryBrush}"
                        HorizontalAlignment="Center" />
         </DockPanel>
@@ -41,31 +41,31 @@
                                     Margin="0,0,20,0" VerticalAlignment="Top" />
 
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock Text="{Binding FloorNumber, StringFormat='Floor {0}'}"
+                                    <TextBlock Text="{Binding FloorLabel}"
                                                FontSize="18" FontWeight="SemiBold"
                                                Foreground="{DynamicResource TextPrimaryBrush}"
                                                Margin="0,0,0,10" />
 
                                     <UniformGrid Columns="4" Margin="0,0,0,12">
                                         <StackPanel Margin="0,0,10,0">
-                                            <TextBlock Text="Area" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{DynamicResource Str_Preview_Area}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding AreaText}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,10,0">
-                                            <TextBlock Text="Volume" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{DynamicResource Str_Preview_Volume}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding VolumeText}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                         </StackPanel>
                                         <StackPanel Margin="0,0,10,0">
-                                            <TextBlock Text="Perimeter" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{DynamicResource Str_Preview_Perimeter}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding PerimeterText}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                         </StackPanel>
                                         <StackPanel>
-                                            <TextBlock Text="Corners (n)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock Text="{DynamicResource Str_Preview_Corners}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             <TextBlock Text="{Binding CornersText}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                         </StackPanel>
                                     </UniformGrid>
 
-                                    <TextBlock Text="Wall lengths by direction" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Text="{DynamicResource Str_Preview_WallLengths}" FontSize="12" FontWeight="SemiBold"
                                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                     <ItemsControl ItemsSource="{Binding WallLines}" Margin="0,0,0,12">
                                         <ItemsControl.ItemTemplate>
@@ -85,7 +85,7 @@
                                         </ItemsControl.ItemContainerStyle>
                                     </ItemsControl>
 
-                                    <TextBlock Text="Windows / doors (width×height — count by direction)" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Text="{DynamicResource Str_Preview_Openings}" FontSize="12" FontWeight="SemiBold"
                                                Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,4" />
                                     <ItemsControl ItemsSource="{Binding OpeningLines}">
                                         <ItemsControl.ItemTemplate>
@@ -94,6 +94,9 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <TextBlock Text="{Binding OpeningWarningText}" Foreground="{DynamicResource ErrorBrush}"
+                                               TextWrapping="Wrap" Margin="0,6,0,0"
+                                               Visibility="{Binding OpeningWarningVisibility}" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -106,11 +109,11 @@
             <TextBlock x:Name="StatusText" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,10"
                        TextWrapping="Wrap" Visibility="Collapsed" />
             <StackPanel Orientation="Horizontal">
-                <Button x:Name="ConfirmButton" Content="Confirm &amp; Write Excel" Style="{StaticResource NavButtonStyle}"
+                <Button x:Name="ConfirmButton" Content="{DynamicResource Str_Preview_Confirm}" Style="{StaticResource NavButtonStyle}"
                         Padding="20,12" Click="OnConfirmClick" Margin="0,0,12,0" />
                 <shared:LoadingSpinner x:Name="ConfirmSpinner" VerticalAlignment="Center"
                                           Margin="0,0,12,0" Visibility="Collapsed" />
-                <Button x:Name="DownloadButton" Content="Download filled Excel" Style="{StaticResource NavButtonStyle}"
+                <Button x:Name="DownloadButton" Content="{DynamicResource Str_Preview_Download}" Style="{StaticResource NavButtonStyle}"
                         Padding="20,12" Click="OnDownloadClick" Visibility="Collapsed" />
             </StackPanel>
         </StackPanel>

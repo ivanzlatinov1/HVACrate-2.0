@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using HVACrate2.App.Shared;
 using HVACrate2.Core;
 using HVACrate2.Core.Models;
 using Microsoft.Win32;
@@ -60,7 +61,7 @@ public partial class PreviewPage : Page
         string templatePath = Path.Combine(AppContext.BaseDirectory, "Assets", "Template.xlsx");
         if (!File.Exists(templatePath))
         {
-            ShowError("Excel template not found alongside the app (Assets/Template.xlsx).");
+            ShowError(Loc.Get("Str_Preview_Err_Template"));
             return;
         }
 
@@ -74,7 +75,7 @@ public partial class PreviewPage : Page
         }
         catch (Exception ex)
         {
-            ShowError($"Writing Excel failed: {ex.Message}");
+            ShowError(Loc.Get("Str_Preview_Err_Write", ex.Message));
             return;
         }
         finally
@@ -84,7 +85,7 @@ public partial class PreviewPage : Page
         }
 
         _lastOutputPath = outputPath;
-        ShowSuccess($"Done — {_floorInputs.Count} floor(s) written. Download the filled Excel file below.");
+        ShowSuccess(Loc.Get("Str_Preview_Success", _floorInputs.Count));
         DownloadButton.Visibility = Visibility.Visible;
     }
 
@@ -92,7 +93,7 @@ public partial class PreviewPage : Page
     {
         if (_lastOutputPath is null || !File.Exists(_lastOutputPath))
         {
-            ShowError("No filled file to download — click Confirm & Write Excel again.");
+            ShowError(Loc.Get("Str_Preview_Err_NoFile"));
             return;
         }
 

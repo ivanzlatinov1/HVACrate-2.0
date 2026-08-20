@@ -32,19 +32,39 @@
                     </EventTrigger>
                 </TextBlock.Triggers>
             </TextBlock>
-            <TextBlock Text="Automated thermal-performance data extraction from DXF drawings"
+            <TextBlock Text="{DynamicResource Str_Start_Subtitle}"
                        FontSize="14"
                        Foreground="{DynamicResource TextSecondaryBrush}"
                        TextWrapping="Wrap"
                        TextAlignment="Center"
-                       Margin="0,10,0,50" />
+                       Margin="0,10,0,16" />
 
-            <Button Content="Start"
+            <TextBlock x:Name="CurrentProjectText"
+                       FontSize="13"
+                       FontStyle="Italic"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Margin="0,0,0,34" />
+
+            <Button Content="{DynamicResource Str_Start_ProjectManagement}"
                     Style="{StaticResource NavButtonStyle}"
-                    Click="OnStartClick"
+                    Click="OnProjectManagementClick"
                     Margin="0,0,0,16" />
 
-            <Button Content="Instructions"
+            <Button x:Name="EnergyEfficiencyButton"
+                    Content="{DynamicResource Str_Start_EnergyEfficiency}"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="OnEnergyEfficiencyClick"
+                    Margin="0,0,0,16" />
+
+            <Button x:Name="FloorHeatingButton"
+                    Content="{DynamicResource Str_Start_FloorHeating}"
+                    Style="{StaticResource NavButtonStyle}"
+                    Click="OnFloorHeatingClick"
+                    Margin="0,0,0,16" />
+
+            <Button Content="{DynamicResource Str_Start_Instructions}"
                     Style="{StaticResource SecondaryButtonStyle}"
                     Click="OnInstructionsClick" />
         </StackPanel>

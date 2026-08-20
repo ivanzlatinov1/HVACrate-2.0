@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0" Margin="0,0,0,16">
-            <Button Content="&#8592; Back" Style="{StaticResource SecondaryButtonStyle}"
+            <Button Content="{DynamicResource Str_Back}" Style="{StaticResource SecondaryButtonStyle}"
                     Padding="12,6" FontSize="13"
                     HorizontalAlignment="Left" Click="OnBackClick" />
             <TextBlock x:Name="TitleText" Text="Floors" FontSize="26" FontWeight="Bold"
@@ -43,13 +43,13 @@
                                         VerticalAlignment="Top" Margin="0,0,20,0" />
 
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding FloorNumber, StringFormat='Floor {0}'}"
+                                        <TextBlock Text="{Binding FloorLabel}"
                                                    FontSize="18" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                                    Margin="0,0,0,10" />
 
                                         <DockPanel Margin="0,0,0,10">
-                                            <Button Content="Choose DXF..." Style="{StaticResource SecondaryButtonStyle}"
+                                            <Button Content="{DynamicResource Str_Work_ChooseDxf}" Style="{StaticResource SecondaryButtonStyle}"
                                                     Padding="12,6" FontSize="13"
                                                     DockPanel.Dock="Left"
                                                     Tag="{Binding}" Click="OnChooseDxfClick" />
@@ -62,7 +62,7 @@
                                                 <ColumnDefinition Width="150" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Height (m)" VerticalAlignment="Center"
+                                            <TextBlock Text="{DynamicResource Str_Work_Height}" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource TextPrimaryBrush}" />
                                             <TextBox Grid.Column="1" Width="120" HorizontalAlignment="Left"
                                                      Padding="6,4" Text="{Binding HeightText, UpdateSourceTrigger=PropertyChanged}" />
@@ -73,7 +73,7 @@
                                                 <ColumnDefinition Width="150" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Apartments" VerticalAlignment="Center"
+                                            <TextBlock Text="{DynamicResource Str_Work_Apartments}" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource TextPrimaryBrush}" />
                                             <TextBox Grid.Column="1" Width="120" HorizontalAlignment="Left"
                                                      Padding="6,4" Text="{Binding ApartmentsText, UpdateSourceTrigger=PropertyChanged}" />
@@ -84,7 +84,7 @@
                                                 <ColumnDefinition Width="150" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Up direction" VerticalAlignment="Center"
+                                            <TextBlock Text="{DynamicResource Str_Work_UpDirection}" VerticalAlignment="Center"
                                                        Foreground="{DynamicResource TextPrimaryBrush}" />
                                             <ComboBox Grid.Column="1" Width="160" HorizontalAlignment="Left"
                                                       ItemsSource="{Binding Source={x:Static local:CompassDirectionOption.All}}"
@@ -92,7 +92,7 @@
                                         </Grid>
                                     </StackPanel>
 
-                                    <Button Grid.Column="2" Content="Remove" Style="{StaticResource SecondaryButtonStyle}"
+                                    <Button Grid.Column="2" Content="{DynamicResource Str_Work_Remove}" Style="{StaticResource SecondaryButtonStyle}"
                                             Padding="10,6" FontSize="12" VerticalAlignment="Top"
                                             Tag="{Binding}" Click="OnRemoveFloorClick" />
                                 </Grid>
@@ -101,7 +101,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Button Content="+ Add floor" Style="{StaticResource SecondaryButtonStyle}"
+                <Button Content="{DynamicResource Str_Work_AddFloor}" Style="{StaticResource SecondaryButtonStyle}"
                         HorizontalAlignment="Left" Padding="14,8"
                         Click="OnAddFloorClick" Margin="0,0,0,20" />
             </StackPanel>
@@ -111,7 +111,7 @@
             <TextBlock x:Name="StatusText" Foreground="{DynamicResource ErrorBrush}" Margin="0,0,0,10"
                        TextWrapping="Wrap" Visibility="Collapsed" />
             <StackPanel Orientation="Horizontal">
-                <Button x:Name="ExtractButton" Content="Extract &amp; Preview" Style="{StaticResource NavButtonStyle}"
+                <Button x:Name="ExtractButton" Content="{DynamicResource Str_Work_ExtractPreview}" Style="{StaticResource NavButtonStyle}"
                         Padding="20,12" Click="OnExtractClick" Margin="0,0,12,0" />
                 <shared:LoadingSpinner x:Name="ExtractSpinner" VerticalAlignment="Center"
                                           Margin="0,0,12,0" Visibility="Collapsed" />

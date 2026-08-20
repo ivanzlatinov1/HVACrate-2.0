@@ -617,3 +617,289 @@ table before the Excel write.
 - `tests/HVACrate2.Core.Tests` is still an empty scaffold (one
   placeholder `Assert.That(true)` test) — pre-existing, not addressed
   this session.
+
+---
+
+## 2026-08-10 — Session 12 (branch `feature/floor-heating`)
+
+**Context:** two housekeeping items closed first, then a substantial
+new feature — Floor Heating — started from scratch at the user's
+request. Not in the original CLAUDE.md scope.
+
+**Done:**
+
+- Closed both discrepancies flagged 2026-08-09 as investigated-but-
+  unresolved: the 0.4×2.46m window (user checked the real CAD file,
+  confirmed real — their own earlier "does not exist" report was a
+  mistake) and the 90×210cm door height (user confirmed the source
+  drawing/reference was wrong, the DXF's own 210cm data stands). Both
+  closed in `plan.md`/`decisions.md`, no code changes.
+- Entered plan mode for the new Floor Heating feature (multi-file,
+  architectural); ran an `AskUserQuestion` round first to settle three
+  open design forks (project-selection flow, whether the heating
+  floor/room list ties to the DXF floors, delta/Qпт input granularity)
+  before writing any code. Plan approved, then implemented:
+  - `ProjectStore.CurrentProject` + Start page restructured to 4
+    buttons (Project Management, Energy Efficiency, Floor Heating,
+    Instructions), the latter two gated on a selected project.
+  - `FloorHeatingCalculator` (`HVACrate2.Core/FloorHeating/`) —
+    Rог/Rод/Ro/r_пд/Qc from the user's reference-sheet screenshots, all
+    physical constants hardcoded, only deltas + Qпт taken as input, per
+    room. Verified against the sheets' own worked example (Ro=1.4881)
+    before wiring up any UI.
+  - `FloorHeatingPage` (dynamic floor/room entry, mirroring `WorkPage`'s
+    existing dynamic-row pattern one level deeper) + inline results,
+    first pass.
+  - **Caught mid-session, corrected the same session:** user pointed
+    out the work had been done directly on `main` instead of a branch
+    — moved everything to `feature/floor-heating` immediately (no
+    commits existed yet on `main`, so this was a clean `git checkout
+    -b`, nothing to salvage).
+  - User supplied a real reference-table screenshot for a room results
+    table (Помещение/Qпт/r пд/Qc/m/Qдол) and the m/Qдол formulas
+    (`m = 3600·Qc/41870`, `Qдол = Qc − Qпт`). Added both to the
+    calculator and a per-floor `DataGrid` results table — verified
+    against the screenshot's own numbers (m=176.64, Qдол≈194.4 for the
+    first row) before considering it done.
+  - Per explicit user follow-up: split the results table onto a new
+    `HeatingResultsPage` (was inline on the data-entry page — user
+    wanted the same shape as the existing `WorkPage`/`PreviewPage`
+    split), and moved the floor/room data from a page-local field onto
+    `ProjectRecord.HeatingFloors` so it survives leaving and
+    re-entering Floor Heating for the same project (the first version
+    lost everything on navigating away — user caught this immediately
+    on trying it).
+  - `dotnet build` clean after every step; app launched and left
+    running for the user to click through directly (no UI-automation
+    tooling used this session — build success and a crash-free launch
+    were the only automated checks).
+
+**Open for the next session:**
+
+- **Floor Heating is intentionally incomplete, blocked on the user
+  supplying more information, not a bug:** a second table "for the
+  serpentines for each room" was requested but its formulas/columns
+  were never given; whether the feature needs any Excel output at all
+  (vs. staying in-app-only) is undecided. See plan.md Phase 6.
+- Everything else carried over from prior sessions (Phase 4 packaging,
+  Phase 5 polish, empty test scaffold) — untouched this session, not
+  being worked on per explicit user instruction ("Phase 4 and 5 will
+  wait for now, as well as the tests").
+- `feature/floor-heating` not yet merged to `main`.
+
+---
+
+## 2026-08-10 — Session 13 (branch `feature/language-toggle`, merged
+into `feature/floor-heating`)
+
+**Context:** continuation of the same day's work. User confirmed Floor
+Heating (Session 12) needs more information before it can be finished,
+so that was left as-is, docs updated, and committed on
+`feature/floor-heating`. New task started from there: a persistent
+language toggle (English/Bulgarian) across every page.
+
+**Done:**
+
+- Committed Session 12's Floor Heating work (first slice) with docs on
+  `feature/floor-heating`.
+- Branched `feature/language-toggle` off `feature/floor-heating` per
+  explicit user correction — this session started the branch
+  proactively from the start, unlike Session 12 where the branch was
+  created only after the user pointed out the work had begun on `main`.
+- Sized the localization scope by grepping every hardcoded UI string
+  across `HVACrate2.App` before planning (~80 XAML + ~30 code-behind
+  occurrences), then entered plan mode and ran an `AskUserQuestion`
+  round to settle two forks: formula/domain notation (Rог, Rод, Qпт,
+  room labels, compass-direction letters) stays fixed in both
+  languages — recommended and confirmed; the Instructions page's full
+  step-by-step prose is in scope for this pass, not deferred — user
+  chose to include it now.
+- Implemented `Shared/LocalizationManager.cs` + `Shared/Loc.cs` +
+  `Shared/Strings.En.xaml`/`Strings.Bg.xaml`, reusing
+  `ThemeManager.cs`'s existing resource-dictionary-swap pattern
+  exactly rather than inventing a new mechanism. Added a second
+  `ToggleButton` next to the existing theme toggle in `MainWindow.xaml`.
+- Localized every page's UI chrome: Start, Project Management, Work +
+  Preview (Energy Efficiency flow), Floor Heating + its results page,
+  Instructions (full prose + both videos' controls), and the crash
+  dialog — see decisions.md for the full file-by-file breakdown.
+- Found and solved a real technical snag along the way: `StringFormat`
+  bindings (`"Floor {0}"`, used on four pages) can't be
+  `DynamicResource`-bound since `StringFormat` is parse-time, not a
+  runtime dependency property. Fixed by adding a computed `FloorLabel`
+  property to each affected view model instead, mirroring the
+  `RoomLabel` pattern already used for `HeatingRoomViewModel`.
+- Unified `FloorHeatingPage`'s seven near-duplicate per-field
+  validation messages into one parameterized resource key.
+- `dotnet build` clean after every stage; re-grepped every
+  `Text=`/`Content=` in the app afterward to confirm only the
+  intentionally-fixed strings remained. App launched and left running
+  for the user to click through both languages directly.
+- User approved after trying it live ("Very good, i like it").
+  Committed on `feature/language-toggle`, then merged into
+  `feature/floor-heating` (the branch point, since that branch is
+  itself still unmerged into `main`) per explicit user instruction.
+
+**Open for the next session:**
+
+- Floor Heating's own open items (Session 12) are unchanged — still
+  blocked on the user for the serpentine table and the Excel-output
+  question.
+- `feature/floor-heating` (now carrying both Session 12 and 13's work)
+  still not merged to `main`.
+- Everything else carried over from prior sessions (Phase 4 packaging,
+  Phase 5 polish, empty test scaffold) untouched.
+
+---
+
+## 2026-08-14 — Session 14 (branch `feature/floor-heating`)
+
+**Context:** first session working from a fresh checkout — started by
+converting the user's freshly-uploaded `Топлотехника V6.0.16.xls` to
+`.xlsx` (the tracked template was missing on disk) so `dotnet build`
+would succeed. Then two fixes requested: the Work page's height field
+rejecting decimals, and windows/doors not being extracted at all for
+three new real sample floors the user uploaded.
+
+**Done:**
+
+- **Locale bug found and fixed.** Confirmed the user's machine is
+  `bg-BG`; `double.TryParse` without an explicit culture rejects `.`-
+  decimal input entirely under that locale (verified directly via a
+  throwaway PowerShell check). Fixed in all three places this pattern
+  existed: `FloorRowViewModel.TryGetHeightM`, `HeatingRoomViewModel`'s
+  delta/Qпт parsing, and `FloorProcessor`'s DXF marker-attribute parsing
+  — all now normalize `,`→`.` then parse with
+  `CultureInfo.InvariantCulture` explicitly.
+- **Investigated the "forgets windows/doors" report** by running a
+  throwaway diagnostic harness against the user's 3 new sample floors —
+  confirmed 0 openings extracted from all three, even after the locale
+  fix, and traced it to a third DXF export convention (no `W Marker`/
+  `D Marker` blocks at all; bare `MText`+`Line` leader annotations; pure
+  Bulgarian wall-layer names) that the existing name-gated extraction
+  code had no path for.
+- User explicitly rejected patching in a fourth hardcoded convention and
+  gave a detailed, specific redesign brief: detect openings from
+  geometry/topology, treat names as hints only, never silently return
+  zero, and prove name-independence with renamed-layer tests. Entered
+  plan mode; the user corrected one design detail mid-plan ("an opening
+  is a perpendicular line to the OVK layer with two numbers next to the
+  line," replacing an early "gap in the wall run" idea) before approving.
+- **Implemented the full pipeline** (`src/HVACrate2.Core/Openings/`, ~10
+  new files) — see decisions.md for the complete architecture. Deleted
+  `WallTopology.cs` entirely (confirmed via grep it had no other callers
+  once the old extraction method was replaced).
+- **First implementation had a real bug, caught by testing against the
+  real files, not assumed correct:** an "exterior classifier" that
+  snapped each candidate to the nearest wall-like point within an 8m
+  search radius accepted almost everything in a compact floor plan
+  (124 openings, many with implausible ~0.3-0.5m widths). Root-caused,
+  reverted to a direct anchor-to-`OVK`-boundary distance check with a
+  per-strategy tolerance, and tightened the leader-line strategy's
+  label-pairing (labels must cluster near each other, not just near the
+  line) — brought results down to plausible door/window sizes.
+- Extended `tests/HVACrate2.Core.Tests`: real-sample regression tests
+  (skip, don't fail, if `samples/` isn't present — it's gitignored) plus
+  synthetic in-memory `DxfDocument`s with deliberately nonsense layer/
+  block names, proving the two implemented strategies don't depend on
+  recognizing any specific name. Added
+  `FloorProcessor.ProcessFloorFromDocument` as the public test entry
+  point (split from `ProcessFloor`, which still just loads a file). All
+  7 tests pass (`dotnet run --project tests/HVACrate2.Core.Tests` — plain
+  `dotnet test` no longer works on this SDK).
+- Full solution `dotnet build` clean. App launched and left running for
+  the user to click through the real Work → Extract & Preview flow
+  directly.
+
+**Continued the same session** once the user supplied their own
+manually-extracted reference file (`Топлотехника V6.0.16.xls`, a live
+client file — converted to `.xlsx` via Excel COM automation for reading,
+never modified, not committed anywhere) for the same building:
+
+- Compared the 46/77/76-per-floor result against the reference's merged
+  108-opening table — confirmed real over-counting (199 raw openings,
+  ~1.84x too many), matching the user's own direct report.
+- Found and fixed two concrete bugs by tracing evidence, not guessing:
+  (1) one physical opening detected multiple times from its own frame/
+  jamb geometry, not deduplicated because the hits landed farther apart
+  than the position-based merge tolerance — fixed by deduplicating on
+  label-entity identity instead of position; (2) a handful of false
+  positives from furniture/dimension/installation annotation layers
+  coincidentally matching the geometric pattern — fixed with a small,
+  evidence-driven negative name-hint list. Brought the total to 106,
+  9/14 sizes matching the reference exactly.
+- User then flagged one specific remaining false positive
+  (`0.8×2.0m`) with a screenshot of the actual drawing, confirming it's
+  a real interior door (room → balcony) and asking for a real fix, not
+  just a note. Root-caused: exterior classification only checked
+  distance to the OVK curve, not whether the opening's own host wall was
+  itself part of the boundary. Added a wall-*backing* check
+  (`WallGeometryClassifier.CollectWallLikeSegments`, requiring both
+  endpoints of a segment near OVK) plus a margin-guarded override for
+  walls explicitly labeled interior — found and fixed a real bug in the
+  process (the wall-name hint didn't distinguish "интериор" from
+  "екстериор" in Bulgarian, since both contain "стен"). Iterated three
+  times against the real comparison after each change (a bare "closer
+  than" override and an over-tight 0.25m threshold each looked like
+  progress in isolation but regressed other correct matches when
+  checked) before landing on the version that fixed the flagged case
+  without regressing others: 104/108, 10/14 exact.
+- Fixed a separately-reported UI bug: the 2D preview's north-arrow label
+  could land outside the canvas's clipped bounds depending on the
+  floor's north angle, leaving a stray line fragment (user circled a
+  screenshot). Root cause was a fixed anchor position never checked
+  against every possible angle; moved it to guarantee clearance.
+- Full solution `dotnet build` clean and all 7 tests passing after every
+  change in this continuation, not just at the end. App relaunched with
+  each new build so the user could verify live.
+
+**Open for the next session:**
+
+- Remaining ~4-point gap (104 vs. 108) across a few sizes with 1-3
+  fewer/extra counts per direction — smaller than what's been fixed so
+  far, not yet individually root-caused the way the two bigger rounds
+  above were.
+- `BlockAttributeStrategy`'s looser (2.5m) exterior tolerance for
+  detached annotation blocks is a known, explicitly-flagged trade-off
+  versus the old full topology-hop-tracing — only synthetic-tested, not
+  re-validated against the original floor1-4/`example.dxf` edge case
+  that motivated the old approach, since those sample files no longer
+  exist on disk.
+- `feature/floor-heating` still not merged to `main`; Floor Heating's own
+  open items (Session 12) unchanged.
+- Everything else carried over from prior sessions (Phase 4 packaging,
+  Phase 5 polish) untouched.
+
+---
+
+## 2026-08-20 — Session 15 (branch `feature/floor-heating`)
+
+**Context:** user reported Floor Heating produced wrong results for a
+specific set of test deltas, suspecting a calculation bug.
+
+**Done:**
+
+- Hand-verified `FloorHeatingCalculator.Calculate` against the user's
+  own test deltas: reproduces their expected Rог/Rод/Ro (0.140802 /
+  1.3473 / 1.4881) exactly. User confirmed the calculator itself is
+  correct — not a bug, nothing changed in `FloorHeatingCalculator.cs`.
+  See decisions.md, 2026-08-20.
+- Fixed a real, separate bug the user then reported: `HeatingResultsPage`'s
+  results `DataGrid` was unreadable in dark mode (cell/header text stayed
+  near-black regardless of theme, since WPF's default `DataGridCell`/
+  `DataGridColumnHeader` templates don't inherit `Foreground` from the
+  parent `DataGrid`). Added explicit themed `DataGridCell`/
+  `DataGridColumnHeader` styles bound to the existing theme brushes. See
+  decisions.md, 2026-08-20.
+- `dotnet build` clean. Not verified with a live screenshot — no desktop
+  UI screenshot tool was available this session.
+- Committed on `feature/floor-heating` and opened a pull request to
+  `main` per explicit user request, bundling this branch's accumulated
+  work (Floor Heating feature, language toggle, Phase 8 opening-
+  extraction rebuild, locale fix, north-arrow fix, this dark-mode fix).
+
+**Open for the next session:**
+
+- Everything carried over from Session 14 (see above) is unchanged.
+- Floor Heating's still-open items (serpentine table, Excel-output
+  question — Session 12) remain blocked on the user.

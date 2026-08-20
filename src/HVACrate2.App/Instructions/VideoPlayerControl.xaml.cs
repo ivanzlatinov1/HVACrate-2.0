@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using HVACrate2.App.Shared;
 
 namespace HVACrate2.App.Instructions;
 
@@ -20,7 +21,7 @@ public partial class VideoPlayerControl : UserControl
             Player.Visibility = Visibility.Collapsed;
             Controls.Visibility = Visibility.Collapsed;
             LoadingText.Visibility = Visibility.Collapsed;
-            MissingText.Text = "Video not available.";
+            MissingText.Text = Loc.Get("Str_Video_Missing");
             MissingText.Visibility = Visibility.Visible;
             return;
         }
@@ -33,7 +34,7 @@ public partial class VideoPlayerControl : UserControl
         Player.Source = source;
         Player.Position = TimeSpan.Zero;
         _isPlaying = false;
-        PlayPauseButton.Content = "Play";
+        PlayPauseButton.Content = Loc.Get("Str_Video_Play");
     }
 
     private void OnPlayPauseClick(object sender, RoutedEventArgs e)
@@ -41,14 +42,14 @@ public partial class VideoPlayerControl : UserControl
         if (_isPlaying)
         {
             Player.Pause();
-            PlayPauseButton.Content = "Play";
+            PlayPauseButton.Content = Loc.Get("Str_Video_Play");
         }
         else
         {
             Player.Play();
             Player.Visibility = Visibility.Visible;
             LoadingText.Visibility = Visibility.Collapsed;
-            PlayPauseButton.Content = "Pause";
+            PlayPauseButton.Content = Loc.Get("Str_Video_Pause");
         }
         _isPlaying = !_isPlaying;
     }
@@ -59,7 +60,7 @@ public partial class VideoPlayerControl : UserControl
         Player.Play();
         Player.Visibility = Visibility.Visible;
         LoadingText.Visibility = Visibility.Collapsed;
-        PlayPauseButton.Content = "Pause";
+        PlayPauseButton.Content = Loc.Get("Str_Video_Pause");
         _isPlaying = true;
     }
 
@@ -67,7 +68,7 @@ public partial class VideoPlayerControl : UserControl
     {
         Player.Position = TimeSpan.Zero;
         Player.Stop();
-        PlayPauseButton.Content = "Play";
+        PlayPauseButton.Content = Loc.Get("Str_Video_Play");
         _isPlaying = false;
     }
 
@@ -76,7 +77,7 @@ public partial class VideoPlayerControl : UserControl
         Player.Visibility = Visibility.Collapsed;
         LoadingText.Visibility = Visibility.Collapsed;
         Controls.Visibility = Visibility.Collapsed;
-        MissingText.Text = "Couldn't load the video — check your internet connection and try again.";
+        MissingText.Text = Loc.Get("Str_Video_Failed");
         MissingText.Visibility = Visibility.Visible;
     }
 }

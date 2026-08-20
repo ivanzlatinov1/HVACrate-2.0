@@ -12,4 +12,8 @@
     <PackageReference Include="netDxf" Version="2023.11.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="HVACrate2.Core.Tests" />
+  </ItemGroup>
+
 </Project>

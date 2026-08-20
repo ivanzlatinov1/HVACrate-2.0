@@ -903,3 +903,40 @@ specific set of test deltas, suspecting a calculation bug.
 - Everything carried over from Session 14 (see above) is unchanged.
 - Floor Heating's still-open items (serpentine table, Excel-output
   question — Session 12) remain blocked on the user.
+
+---
+
+## 2026-08-20 — Session 16 (branch `test/core-coverage-85`, off
+`feature/floor-heating`)
+
+**Context:** user asked for 85%+ test coverage on `HVACrate2.Core`
+using TUnit before publishing the pending pull request.
+
+**Done:**
+
+- Added `InternalsVisibleTo` (Core → Tests) so tests can exercise the
+  `Openings/` internals and `FloorProcessor`'s internal direction
+  helpers directly, not only through the public pipeline entry points.
+- Added `Microsoft.Testing.Extensions.CodeCoverage` for cobertura
+  coverage reports (`dotnet run --coverage`).
+- Wrote 10 new test files (FloorHeatingCalculator, Models, GeometryUtils,
+  FloorProcessor direction math, OpeningDeduper, WordHints,
+  TypeClassifier, WallGeometryClassifier, ExteriorClassifier,
+  DxfEntityIndex, BlockAttributeStrategy, PerpendicularLabeledLineStrategy,
+  OpeningExtractor, and a new FloorProcessorExcelTests covering the
+  Excel-write path against the real tracked template) — 129 tests total,
+  all passing.
+- Excluded `Program.cs` (the console test harness) from coverage via
+  `[ExcludeFromCodeCoverage]` — not part of the library's real contract,
+  not meaningfully testable without real local sample files.
+- Removed the now-redundant placeholder `Tests.cs`.
+- Result: 99.9% line / 94.9% branch coverage on `HVACrate2.Core`, past
+  the 85% target. See decisions.md, 2026-08-20, for full detail.
+- `dotnet build` clean across the whole solution, 0 warnings.
+
+**Open for the next session:**
+
+- `test/core-coverage-85` not yet merged; the earlier-requested pull
+  request from `feature/floor-heating` to `main` is still pending —
+  `gh` CLI unavailable in this environment, PR must be opened manually.
+- Everything else carried over from Session 15/14 unchanged.

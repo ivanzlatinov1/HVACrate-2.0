@@ -1736,3 +1736,69 @@ plus `AlternatingRowBackground`/`HorizontalGridLinesBrush`/
 `dotnet build` clean. Not verified with a live screenshot — no desktop
 UI screenshot tool was available in this session, only build-level
 verification.
+
+---
+
+## 2026-08-20 (same day) — 85%+ TUnit coverage added for HVACrate2.Core,
+branch `test/core-coverage-85`
+
+**Decision:** added `InternalsVisibleTo` from `HVACrate2.Core` to
+`HVACrate2.Core.Tests`, so the new tests can exercise the `internal`
+classes in `Openings/` (`GeometryUtils`, `OpeningDeduper`,
+`TypeClassifier`, `WordHints`, `DxfEntityIndex`, `ExteriorClassifier`,
+`WallGeometryClassifier`, `BlockAttributeStrategy`,
+`PerpendicularLabeledLineStrategy`, `OpeningExtractor`) and
+`FloorProcessor`'s internal bearing/direction helpers
+(`BearingToDirection`, `EdgeOutwardDirection`) directly, in isolation —
+not only indirectly through the full DXF→Excel pipeline. This gives far
+more precise, fast-to-diagnose tests than only driving everything
+through `ProcessFloorFromDocument`, at the cost of coupling tests to
+implementation internals — judged the right tradeoff here since these
+internals (candidate strategies, classifiers, dedup) are exactly where
+this codebase's real logic/bugs have lived per the rest of this file.
+
+**Coverage tooling:** added `Microsoft.Testing.Extensions.CodeCoverage`
+to the test project (Microsoft.Testing.Platform-native, works with
+`dotnet run --coverage --coverage-output-format cobertura` — plain
+`dotnet test` was already noted as broken on this SDK, see 2026-08-14).
+Had to bump the pinned version from an initially-guessed `17.14.4` to
+`18.9.0` — TUnit 1.63.0 itself already depends on `18.9.0` transitively,
+and NuGet's central version resolution treats a lower explicit pin as a
+downgrade error, not a silent override.
+
+**`Program.cs` excluded from the coverage target** via
+`[ExcludeFromCodeCoverage]`. It is a manual console harness with
+hardcoded local sample/template paths (per its own long-standing
+description in this file and in plan.md) — not part of the library's
+real public contract exercised by the app or by any test, and not
+meaningfully testable without real local files that aren't guaranteed
+to exist in every checkout. Excluding it (rather than writing a test
+that would just assert it doesn't crash against paths that may not
+exist) keeps the coverage number meaningful.
+
+**New test files, one per production file/concern, plus a new
+`FloorProcessorExcelTests.cs`** covering the Excel-write path
+(`WriteFloorsToExcel`/`ProcessAndWriteFloors`) against the real, tracked
+blank template (`output/Топлотехника V6.0.16.xlsx`) — geometry block,
+wall-by-direction block, the merged openings table, and the
+apartment/appliance block — plus the previously-untested
+`DetectCoordinateDivisor` millimeter-fallback branch, the
+largest-area OVK selection among multiple same-layer polylines, the
+missing-OVK-layer exception, and a non-rectangular (reflex-corner)
+floor plan for `CountConvexCorners`. All Excel-write tests write to a
+temp-directory scratch copy, cleaned up in a `finally` block — the
+tracked template itself is never modified, consistent with the
+existing `WriteFloorsToExcel` design (see the 2026-08-04 entry above).
+
+**Removed the placeholder `Tests.cs`** (`Assert.That(true).IsTrue()`,
+flagged by TUnit's own `TUnitAssertions0005` analyzer) now that real
+coverage exists — no longer any reason to keep a scaffold test around.
+
+**Result:** 129 tests, all passing; **99.9% line coverage / 94.9%
+branch coverage** on `HVACrate2.Core` (`dotnet run --coverage
+--coverage-output-format cobertura` from `tests/HVACrate2.Core.Tests`),
+well past the 85% target. The one class not at 100% is `FloorProcessor`
+itself, at 99.5%/95.9% — a couple of defensive branches (e.g. the
+`cross == 0` exact-collinear-vertex case in `CountConvexCorners`) are
+untested edge cases with no known real-world trigger, not gaps in the
+tested behavior.

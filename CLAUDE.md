@@ -84,6 +84,23 @@ the user to ask for it explicitly.
 
 ```
 dotnet build
-dotnet run --project src/HVACrate.App
-dotnet publish src/HVACrate.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet run --project src/HVACrate2.App
+dotnet publish src/HVACrate2.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
+
+## Publishing a release
+
+Releases are automated via `.github/workflows/release.yml`: pushing a
+`v*` tag builds the self-contained single-file `.exe` (`HVACrate2.exe`),
+zips it together with its bundled `Assets/Template.xlsx` (a loose
+CopyToOutputDirectory file the app reads from disk, so it can't be
+embedded into the exe itself — see the workflow's comment), and creates
+a GitHub Release with that zip attached. No manual upload needed.
+
+```
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+The stable download link (always resolves to the newest release):
+`https://github.com/ivanzlatinov1/HVACrate-2.0/releases/latest/download/HVACrate2-win-x64.zip`

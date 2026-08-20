@@ -163,10 +163,31 @@
 
 ## Phase 4 — Packaging and distribution
 
-- [ ] `dotnet publish` single-file self-contained build for win-x64
-- [ ] Test the `.exe` on a "clean" machine (no .NET installed)
-- [ ] Upload to GitHub Releases
-- [ ] Link to the `.exe` from the existing static website
+- [x] `dotnet publish` single-file self-contained build for win-x64 —
+      automated in `.github/workflows/release.yml`, triggered by
+      pushing a `v*` tag. `HVACrate2.App.csproj` now sets
+      `AssemblyName=HVACrate2` and `Version=1.0.0` so the published
+      exe is `HVACrate2.exe`. See decisions.md, 2026-08-20 (Release
+      automation session).
+- [ ] Test the `.exe` on a "clean" machine (no .NET installed) —
+      `--self-contained true` bundles the runtime, which addresses the
+      underlying concern architecturally, but a literal fresh-VM test
+      hasn't been done and needs the user (no such environment
+      available to Claude Code in this session).
+- [x] Upload to GitHub Releases — automated by the same workflow
+      (`softprops/action-gh-release@v2`, tag-triggered). No manual
+      upload or `gh` CLI needed for any future release; just push a
+      version tag.
+- [ ] Link to the `.exe` from the existing static website — outside
+      this repo, the user's own action. Stable URL to use (always
+      resolves to the newest release, never needs updating):
+      `https://github.com/ivanzlatinov1/HVACrate-2.0/releases/latest/download/HVACrate2-win-x64.zip`.
+      The download is a zip, not a bare `.exe` — WPF's native interop
+      DLLs get folded into the exe via
+      `IncludeNativeLibrariesForSelfExtract`, but the bundled
+      `Assets/Template.xlsx` is a loose file the app reads from disk
+      next to the exe, so it can't be embedded the same way. See
+      decisions.md, 2026-08-20 (Release automation session).
 
 ## Phase 5 — Polish (later, not urgent)
 

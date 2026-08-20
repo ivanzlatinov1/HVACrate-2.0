@@ -1854,3 +1854,90 @@ from `feature/floor-heating` to `main` between turns. This comment-removal
 work was branched from that already-updated `main`, not from
 `feature/floor-heating`, since both of that branch's commits are now
 part of `main` anyway.
+
+---
+
+## 2026-08-20 (same day) — Phase 4 (packaging/distribution) closed out:
+tag-triggered GitHub Actions release workflow, branch
+`feature/release-automation`
+
+**Context:** the user asked to make the app downloadable via a GitHub
+Releases link for their website — the last untouched item from
+CLAUDE.md's original architecture ("uploaded to GitHub Releases, linked
+from the static site"). Went through `EnterPlanMode` (an Explore pass
+confirmed `HVACrate2.App.csproj` had no publish-related properties yet,
+that `.github/workflows/ci.yml` already dry-run-validates the exact
+publish command via its `publish-check` job, and that `gh` CLI is still
+unavailable in this environment with no other GitHub API credentials),
+then an `AskUserQuestion` round settled two forks: automate via GitHub
+Actions (vs. one-off manual publish) and use a proper `v1.0.0` tag with
+asset name `HVACrate2.exe` (vs. reusing the existing `Pre-Release` tag,
+which stays as the two tutorial videos' unrelated home).
+
+**`HVACrate2.App.csproj`:** added `AssemblyName=HVACrate2` (so the
+built/published binary is `HVACrate2.exe`/`HVACrate2.dll`, not the
+default `HVACrate2.App.exe`) and `Version=1.0.0`. Deliberately did
+*not* bake `RuntimeIdentifier`/`SelfContained`/`PublishSingleFile` into
+the csproj as defaults — kept them as explicit `dotnet publish`
+command-line flags (matching `ci.yml`'s existing convention) so plain
+local `dotnet build`/`dotnet run` for any of the three projects is
+unaffected.
+
+**New `.github/workflows/release.yml`**, triggered on `v*` tag push: a
+`test` job (same restore/build/test steps as `ci.yml`, so a broken
+commit can never produce a release) gates a `release` job that
+publishes and uploads via `softprops/action-gh-release@v2`
+(`generate_release_notes: true`). This makes every future release a
+two-command action for the user (`git tag vX.Y.Z && git push origin
+vX.Y.Z`) — no `gh` CLI or manual upload ever needed again, working
+around this environment's lack of `gh`/API credentials by moving the
+actual "create a public release" step onto GitHub's own runner, which
+has its own token.
+
+**Real bug caught by actually running the published output, not just
+building it:** verified locally end-to-end — published with
+`--self-contained true -p:PublishSingleFile=true`, and found `HVACrate2.exe`
+alone is **not** standalone: several WPF native interop DLLs
+(`D3DCompiler_47_cor3.dll`, `PenImc_cor3.dll`, `PresentationNative_cor3.dll`,
+`vcruntime140_cor3.dll`, `wpfgfx_cor3.dll`) are always emitted as
+separate files next to the exe by `PublishSingleFile` — .NET's
+single-file host only bundles managed assemblies, native (non-CLR)
+libraries are loaded via `LoadLibrary` and can't be folded in the same
+way. Fixed by adding `-p:IncludeNativeLibrariesForSelfExtract=true`,
+which does embed them (self-extracting to a temp dir at process start)
+— re-verified the native DLLs disappeared from the output folder after
+adding the flag.
+
+**Second real constraint found the same way:** even with that flag,
+`Assets/Template.xlsx` (the bundled blank Excel template, an existing
+`CopyToOutputDirectory="PreserveNewest"` loose file per the 2026-08-05
+Phase 3 decision) still isn't embeddable — the app reads it from disk
+next to the exe at runtime, and single-file publishing has no mechanism
+to fold arbitrary non-assembly content files into the bundle. Rather
+than change the app's template-loading code (out of scope for this
+session, and higher regression risk than the alternative), the release
+workflow zips the whole publish output (`HVACrate2.exe` + `Assets/`)
+into `HVACrate2-win-x64.zip` and uploads *that* as the release asset —
+still one link, one download, for the user. `plan.md`/`CLAUDE.md` both
+updated to describe the download as a zip, not a bare `.exe`.
+
+**Verified end-to-end, not just built:** published locally with the
+exact flags the workflow uses, zipped it with the same `Compress-Archive`
+command the workflow runs, extracted the zip to a **fresh** directory,
+and launched `HVACrate2.exe` from there — confirmed it starts with no
+`dotnet`/SDK involved and its main window title reads "HVACrate 2.0".
+This is the closest this session could get to Phase 4's "test on a
+clean machine" item without an actual clean VM (self-contained
+publishing means no .NET runtime install dependency either way, which
+is the concern that checklist item was really getting at).
+
+**Not done by this session, deliberately:** pushing the `v1.0.0` tag
+that actually triggers the first public release. Creating a public
+GitHub Release is treated as a publish action for the user to trigger
+themselves (documented in `CLAUDE.md`'s new "Publishing a release"
+section) — this session prepared everything up to that point (branch
+pushed, PR link handed to the user) but did not tag/push it.
+
+**Closes Phase 4** except: (1) a literal clean-VM test, left to the
+user; (2) actually linking the download URL from their static website,
+which lives outside this repo entirely.

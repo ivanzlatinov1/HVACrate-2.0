@@ -1693,3 +1693,46 @@ angle, only whichever angle the floors tested so far happened to use.
 14 + label gap 8 + the label's own ~9px half-extent ≈ 31px worst case)
 that the label stays inside the canvas regardless of which direction the
 arrow points. `dotnet build` clean.
+
+---
+
+## 2026-08-20 — Floor Heating "wrong results" report: calculator confirmed
+correct; real bug was `HeatingResultsPage`'s `DataGrid` unreadable in dark
+mode
+
+**Context:** user reported the floor-heating calculation was producing
+wrong numbers for a specific set of test deltas (δбет‑под=0.015,
+δзам=0.01, δтер=0.005, δбет‑таван=0.015, δизол=0.03, δплоч=0.4,
+δзам=0.01), expecting Rог=0.140802, Rод=1.3473, Ro=1.4881.
+
+**Investigated by hand-computing `FloorHeatingCalculator.Calculate`**
+against the six physical deltas the model actually accepts (δбет=0.015,
+δзам‑под=0.01, δтер=0.005, δизол=0.03, δплоч=0.4, δзам‑таван=0.01):
+reproduces 0.140802 / 1.347277 / 1.488079 exactly. **Conclusion: the
+calculator and formula wiring are correct, not a bug** — the user
+confirmed this once shown the arithmetic. (The extra `δбет‑таван` value
+in the report has no separate field by design — see the 2026-08-10 entry
+above — δбет is one shared input; this was never root-caused further
+since the user confirmed the calculation itself was fine.)
+
+**Real, separate bug found and fixed: `HeatingResultsPage`'s results
+`DataGrid` was unreadable in dark mode.** The `DataGrid` set
+`Background`/`Foreground`/`RowBackground`/`BorderBrush` at the
+`DataGrid` level via `DynamicResource`, but WPF's default
+`DataGridCell`/`DataGridColumnHeader` control templates don't inherit
+`Foreground` from the parent `DataGrid` — they fall back to
+`SystemColors`-based defaults, which stayed dark/near-black regardless
+of theme. In light mode this happened to still read fine (dark text on
+the app's light card background); in dark mode the cell text became
+near-invisible against the dark card background. Fixed by adding
+explicit `DataGrid.Resources` styles for `DataGridCell` (Foreground,
+transparent Background so `RowBackground` shows through, themed
+selection colors) and `DataGridColumnHeader` (Background/Foreground/
+BorderBrush, all `DynamicResource`-bound to the existing theme brushes),
+plus `AlternatingRowBackground`/`HorizontalGridLinesBrush`/
+`VerticalGridLinesBrush` for full theme consistency. This is the first
+`DataGrid` in the app (Energy Efficiency's results use plain
+`TextBlock`s, not a grid), so this styling gap hadn't been hit before.
+`dotnet build` clean. Not verified with a live screenshot — no desktop
+UI screenshot tool was available in this session, only build-level
+verification.

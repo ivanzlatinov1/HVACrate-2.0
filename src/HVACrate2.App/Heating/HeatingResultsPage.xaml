@@ -40,8 +40,31 @@
                                       Background="{DynamicResource CardBackgroundBrush}"
                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                       RowBackground="{DynamicResource CardBackgroundBrush}"
+                                      AlternatingRowBackground="{DynamicResource CardBackgroundBrush}"
                                       BorderBrush="{DynamicResource CardBorderBrush}"
-                                      BorderThickness="1">
+                                      BorderThickness="1"
+                                      HorizontalGridLinesBrush="{DynamicResource CardBorderBrush}"
+                                      VerticalGridLinesBrush="{DynamicResource CardBorderBrush}">
+                                <DataGrid.Resources>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="{DynamicResource CardBorderBrush}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                        <Setter Property="Padding" Value="6,4" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+                                        <Setter Property="BorderThickness" Value="0,0,1,1" />
+                                    </Style>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource TitleForegroundBrush}" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.Resources>
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Помещение" Binding="{Binding RoomLabel}" Width="120" />
                                     <DataGridTextColumn Header="Qпт (W)" Binding="{Binding QptText}" Width="90" />

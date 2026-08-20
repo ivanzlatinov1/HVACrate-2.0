@@ -869,3 +869,37 @@ never modified, not committed anywhere) for the same building:
   open items (Session 12) unchanged.
 - Everything else carried over from prior sessions (Phase 4 packaging,
   Phase 5 polish) untouched.
+
+---
+
+## 2026-08-20 — Session 15 (branch `feature/floor-heating`)
+
+**Context:** user reported Floor Heating produced wrong results for a
+specific set of test deltas, suspecting a calculation bug.
+
+**Done:**
+
+- Hand-verified `FloorHeatingCalculator.Calculate` against the user's
+  own test deltas: reproduces their expected Rог/Rод/Ro (0.140802 /
+  1.3473 / 1.4881) exactly. User confirmed the calculator itself is
+  correct — not a bug, nothing changed in `FloorHeatingCalculator.cs`.
+  See decisions.md, 2026-08-20.
+- Fixed a real, separate bug the user then reported: `HeatingResultsPage`'s
+  results `DataGrid` was unreadable in dark mode (cell/header text stayed
+  near-black regardless of theme, since WPF's default `DataGridCell`/
+  `DataGridColumnHeader` templates don't inherit `Foreground` from the
+  parent `DataGrid`). Added explicit themed `DataGridCell`/
+  `DataGridColumnHeader` styles bound to the existing theme brushes. See
+  decisions.md, 2026-08-20.
+- `dotnet build` clean. Not verified with a live screenshot — no desktop
+  UI screenshot tool was available this session.
+- Committed on `feature/floor-heating` and opened a pull request to
+  `main` per explicit user request, bundling this branch's accumulated
+  work (Floor Heating feature, language toggle, Phase 8 opening-
+  extraction rebuild, locale fix, north-arrow fix, this dark-mode fix).
+
+**Open for the next session:**
+
+- Everything carried over from Session 14 (see above) is unchanged.
+- Floor Heating's still-open items (serpentine table, Excel-output
+  question — Session 12) remain blocked on the user.

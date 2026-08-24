@@ -7,7 +7,8 @@
         mc:Ignorable="d"
         Title="HVACrate 2.0" Height="600" Width="900"
         MinHeight="500" MinWidth="750"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Icon="Assets/app-icon.ico">
     <Grid>
         <Frame x:Name="RootFrame" NavigationUIVisibility="Hidden" />
 

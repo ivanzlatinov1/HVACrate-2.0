@@ -8,6 +8,7 @@ public sealed class OpeningExtractionDiagnostics
 {
     public int EntitiesInspected { get; set; }
     public int WallLikePointsFound { get; set; }
+    public bool UsedWindowsLayer { get; set; }
     public Dictionary<string, int> CandidatesByStrategy { get; set; } = new();
     public int AcceptedCount { get; set; }
     public int RejectedCount { get; set; }

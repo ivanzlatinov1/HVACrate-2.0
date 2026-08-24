@@ -12,9 +12,19 @@ namespace HVACrate2.Core.Openings;
 internal static class OpeningExtractor
 {
     private const double MinOpeningM = 0.4;
-    private const double MaxOpeningM = 3.5;
 
-    private static readonly IOpeningCandidateStrategy[] Strategies =
+    /// <summary>
+    /// Raised from 3.5m after a real sample (`new_floor_1.dxf`) turned up a genuine 1.55x3.55m
+    /// floor-to-ceiling exterior window — confirmed real via its OVK-proximity/wall-backing (0.32m/
+    /// 0.31m, same tight cluster as every other confirmed exterior opening on that floor), not a
+    /// parsing error. 4.0m keeps rejecting genuinely implausible values (e.g. a mis-parsed room
+    /// dimension) while giving headroom above the tallest confirmed real opening.
+    /// </summary>
+    private const double MaxOpeningM = 4.0;
+
+    private static readonly IOpeningCandidateStrategy[] WindowsLayerStrategies = [new WindowsLayerStrategy()];
+
+    private static readonly IOpeningCandidateStrategy[] LegacyStrategies =
     [
         new BlockAttributeStrategy(),
         new PerpendicularLabeledLineStrategy(),
@@ -33,9 +43,13 @@ internal static class OpeningExtractor
         var explicitInteriorSegments = WallGeometryClassifier.CollectExplicitInteriorSegments(entities);
         diagnostics.WallLikePointsFound = wallLikeSegments.Count;
 
+        bool usingWindowsLayer = WindowsLayerStrategy.HasWindowsLayer(entities);
+        diagnostics.UsedWindowsLayer = usingWindowsLayer;
+        var strategies = usingWindowsLayer ? WindowsLayerStrategies : LegacyStrategies;
+
         var context = new OpeningDetectionContext(entities, ovkEdges);
         var candidates = new List<OpeningCandidate>();
-        foreach (var strategy in Strategies)
+        foreach (var strategy in strategies)
         {
             var found = strategy.Detect(context);
             diagnostics.CandidatesByStrategy[strategy.Name] = found.Count;
@@ -68,9 +82,11 @@ internal static class OpeningExtractor
 
         if (openings.Count == 0)
         {
-            diagnostics.Warnings.Add(wallLikeSegments.Count > 0
-                ? "0 openings detected — extraction confidence low; no recognized opening geometry/relationship found despite wall geometry being present near the OVK boundary."
-                : "0 openings detected, and no wall-like geometry was found near the OVK boundary either — check that wall geometry exists close to the traced OVK outline in this file.");
+            diagnostics.Warnings.Add(usingWindowsLayer
+                ? "0 openings detected — a 'Windows' layer was found but produced no valid exterior opening; not falling back to the legacy detection strategies, since blending an unrelated convention risks reintroducing the errors the 'Windows'-layer convention was adopted to fix. Check the layer's label format and its distance to the OVK boundary."
+                : wallLikeSegments.Count > 0
+                    ? "0 openings detected — extraction confidence low; no recognized opening geometry/relationship found despite wall geometry being present near the OVK boundary."
+                    : "0 openings detected, and no wall-like geometry was found near the OVK boundary either — check that wall geometry exists close to the traced OVK outline in this file.");
         }
 
         return (openings, diagnostics);

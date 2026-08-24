@@ -44,6 +44,9 @@ public class OpeningExtractorTests
         return insert;
     }
 
+    private static void AddWindowsLabel(DxfDocument doc, string text, (double x, double y) posCm)
+        => doc.Entities.Add(new MText(text, new Vector2(posCm.x, posCm.y), 5) { Layer = new Layer("WINDOWS") });
+
     [Test]
     public async Task Extract_CandidateFarFromOvk_IsRejectedAsInterior()
     {
@@ -74,7 +77,7 @@ public class OpeningExtractorTests
     {
         var doc = NewDoc();
         AddLeftEdgeWall(doc);
-        AddAttributeInsert(doc, "Zorp", (0, 400), "90", "400");
+        AddAttributeInsert(doc, "Zorp", (0, 400), "90", "450");
 
         var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
 
@@ -143,5 +146,65 @@ public class OpeningExtractorTests
         var (_, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
 
         await Assert.That(diagnostics.EntitiesInspected).IsGreaterThan(0);
+    }
+
+    [Test]
+    public async Task Extract_WindowsLayerAbsent_UsedWindowsLayerIsFalse()
+    {
+        var doc = NewDoc();
+        AddAttributeInsert(doc, "Zorp", (0, 400), "80", "210");
+
+        var (_, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
+
+        await Assert.That(diagnostics.UsedWindowsLayer).IsFalse();
+    }
+
+    [Test]
+    public async Task Extract_WindowsLayerPresent_UsesOnlyWindowsLayerStrategy_IgnoringLegacyCandidates()
+    {
+        var doc = NewDoc();
+        AddLeftEdgeWall(doc);
+        // A legacy-convention candidate that would normally be detected fine on its own.
+        AddAttributeInsert(doc, "Zorp", (0, 200), "80", "210");
+        // The new, authoritative convention, also present in the same file.
+        AddWindowsLabel(doc, "90\n200", (0, 500));
+
+        var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
+
+        await Assert.That(diagnostics.UsedWindowsLayer).IsTrue();
+        await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("WindowsLayer")).IsTrue();
+        await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("BlockAttribute")).IsFalse();
+        await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("PerpendicularLabeledLine")).IsFalse();
+        await Assert.That(openings.Count).IsEqualTo(1);
+        await Assert.That(openings[0].DimensionSource).IsEqualTo("windows-layer");
+    }
+
+    [Test]
+    public async Task Extract_WindowsLayerPresentButNoValidCandidate_DoesNotFallBackToLegacy()
+    {
+        var doc = NewDoc();
+        AddLeftEdgeWall(doc);
+        // Would be a perfectly valid legacy candidate if the fallback ever ran.
+        AddAttributeInsert(doc, "Zorp", (0, 400), "80", "210");
+        // Windows layer is present, but this label doesn't parse as a dimension pair.
+        AddWindowsLabel(doc, "П-1", (0, 500));
+
+        var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
+
+        await Assert.That(diagnostics.UsedWindowsLayer).IsTrue();
+        await Assert.That(openings).IsEmpty();
+        await Assert.That(diagnostics.Warnings.Any(w => w.Contains("'Windows' layer was found"))).IsTrue();
+    }
+
+    [Test]
+    public async Task Extract_WindowsLayerCandidateFarFromOvk_IsRejectedAsInterior()
+    {
+        var doc = NewDoc();
+        AddWindowsLabel(doc, "80\n200", (500, 400));
+
+        var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
+
+        await Assert.That(openings).IsEmpty();
+        await Assert.That(diagnostics.RejectionReasons.Keys).Contains("not near the exterior boundary (OVK)");
     }
 }

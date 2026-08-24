@@ -1941,3 +1941,124 @@ pushed, PR link handed to the user) but did not tag/push it.
 **Closes Phase 4** except: (1) a literal clean-VM test, left to the
 user; (2) actually linking the download URL from their static website,
 which lives outside this repo entirely.
+
+---
+
+## 2026-08-24 — Phase 9: "Windows" layer becomes the primary opening-
+extraction signal, branch `feature/windows-layer-opening-extraction`
+
+**Context:** the user reported the Phase 8 name-agnostic geometric
+strategies (`BlockAttributeStrategy`/`PerpendicularLabeledLineStrategy`)
+were producing wrong results badly enough to call it a "major
+error/bug," and had found a fix at the source: every future project's
+`.dxf` will include a dedicated layer for opening dimension labels,
+covering both exterior and interior openings.
+
+**Investigated two real samples before writing any extraction code**
+(`samples/new_floor_1.dxf`, `samples/new_floor_2.dxf`, both real
+client files, user-confirmed to have no `Windows`-layer precedent in
+the older `floor1-3.dxf` samples). A throwaway diagnostic dump
+(`Program.cs`, removed after use — same pattern as `DebugTrace.cs` in
+Session 10) found the real structure differs from every guess made
+before looking:
+
+- The layer is named `WINDOWS` (all caps) in both real files. Each
+  opening has exactly **one** `TEXT`/`MTEXT` entity on that layer
+  carrying **both** dimensions as two numeric lines in one string
+  (e.g. `"150\n300"`) — not two separate labels needing spatial
+  pairing, and not an `INSERT`+`ATTRIB` block like the old marker
+  convention.
+- **Order is width-then-height, not "larger value = height."** Real
+  door-height (200cm, standard Bulgarian door height) entries like
+  `"270\n200"` prove this: the old `BlockAttributeStrategy` magnitude
+  rule would have swapped this real 270×200 door into a wrong 200×270.
+- **Exterior/interior separation by OVK distance is dramatically
+  cleaner than anything seen in earlier conventions.** Measured
+  directly: `new_floor_1.dxf`'s real exterior candidates all sit
+  ≤0.33m from OVK, its 4 real interior doors all sit ≥0.93m away — a
+  ~3x gap; `new_floor_2.dxf`'s exterior candidates sit ≤0.34m, its 13
+  interior doors 1.76m–4.57m away — an even wider gap. No tolerance-
+  tuning fight like the one documented throughout Phase 8/9 (2026-08-09)
+  was needed.
+- Other labels sharing the same layer (`П-1` type tags, `Нпп=50`-style
+  sill-height annotations, `A. C.` tags) don't parse as a clean
+  2-number pair and are skipped automatically by the parsing rule — no
+  special-case exclusion list needed for them.
+
+**Decision (confirmed with the user before implementing):** add
+`WindowsLayerStrategy` (`src/HVACrate2.Core/Openings/WindowsLayerStrategy.cs`)
+as a new `IOpeningCandidateStrategy`, and make it **primary when
+present**: `OpeningExtractor.Extract` now checks whether the document
+has any entity on a layer whose name *starts with* `"windows"`
+(case-insensitive); if so, it runs *only* `WindowsLayerStrategy` for
+that floor (the two legacy strategies don't run at all), otherwise it
+falls back to the legacy strategies exactly as before — full backward
+compatibility for files without the new layer. If the Windows-layer
+path yields 0 accepted candidates, it does **not** silently fall back
+to the legacy strategies (that could reintroduce exactly the kind of
+wrong result this change fixes) — it surfaces a new diagnostics
+warning instead, via a new `OpeningExtractionDiagnostics.UsedWindowsLayer`
+flag. The rest of the pipeline (`ExteriorClassifier`,
+`WallGeometryClassifier`, `TypeClassifier`, `Validate`, `OpeningDeduper`)
+is completely unchanged — the new strategy is only a new candidate
+source, proving out the plan's premise that exterior/interior
+classification was already layer-name-agnostic.
+
+**Real bug caught before shipping, not after:** the first version of
+the "is the Windows layer present" check used `Contains("window", ...)`
+— a *substring* match. Running the full regression suite immediately
+caught this: `floor1.dxf` (an Archicad export) has unrelated layers
+named `"Archicad Window Markers_Pen_No__6"` and
+`"Archicad Windows_Pen_No__81"`, which a substring match wrongly
+claimed as the new convention — silently switching that file onto
+`WindowsLayerStrategy` (which finds nothing in it, since it's not
+actually using the new convention) and dropping every real opening
+it used to find via the legacy strategies, taking `floor1-3.dxf`'s
+opening counts to 0. Fixed by requiring the layer name to *start with*
+`"windows"` instead of merely containing it — matches both real
+`WINDOWS`-layer samples exactly while no longer matching Archicad's
+own unrelated default layer names. Full regression suite (147 tests)
+passes clean after the fix, including the pre-existing `floor1-3.dxf`
+tests.
+
+**Second real bug found and fixed via the same real data:** `new_floor_1.dxf`
+has a genuine 1.55×3.55m floor-to-ceiling exterior window (confirmed
+real via the same tight OVK-proximity/wall-backing cluster as every
+other confirmed exterior opening on that floor — not a parsing
+artifact), which `OpeningExtractor`'s plausibility cap
+(`MaxOpeningM = 3.5`) was rejecting outright as "height outside
+plausible range." Raised to `4.0` with margin above the confirmed
+real value; the corresponding test
+(`Extract_DimensionAboveMaxWholeOpeningRange_IsRejected`) was updated
+to use a value clearly above the new bound instead of exactly at the
+old one.
+
+**Validated:** `new_floor_1.dxf` → 11/15 candidates accepted (4
+rejected interior doors, matching the manual distance analysis
+exactly); `new_floor_2.dxf` → 16/29 accepted (13 rejected interior
+doors, same exact match). Added `WindowsLayerStrategyTests` (mirroring
+`BlockAttributeStrategyTests`'s pattern), new `OpeningExtractorTests`
+cases proving the primary-when-present/no-fallback behavior, and two
+new `OpeningExtractionRegressionTests` entries for the real samples.
+All 147 tests pass; full solution `dotnet build` clean.
+
+**User-confirmed correct:** the user manually checked the extracted
+metrics against the real drawings for both `new_floor_1.dxf` and
+`new_floor_2.dxf` and confirmed they match — closing this out as fully
+validated, not just structurally plausible. Real height/north-angle
+values for these two floors were not needed for this check (the
+placeholder `2.8m`/`0°` used during development only affected direction
+labeling, not the widths/heights/counts being verified).
+
+**Follow-up same session:** added a new mandatory step to the in-app
+DXF-export instructions (`InstructionsPage.xaml`,
+`Strings.En.xaml`/`Strings.Bg.xaml`) — "rename the layer holding the
+window/door dimension labels to `WINDOWS`" — inserted right after the
+existing "create OVK layer" step, renumbering the remaining export
+steps (previously 4-9, now 5-10) in both languages. Verified visually
+against the real built app (not just the resource dictionary): took
+screenshots of the rendered Instructions page via `PrintWindow`
+(direct window-handle capture, since a plain screen-coordinate capture
+grabbed the wrong output in this environment) confirming the new step
+renders with the same bold "(mandatory)" styling as the OVK step, and
+every step after it renumbered correctly through step 10.

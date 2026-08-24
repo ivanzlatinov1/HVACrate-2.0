@@ -1017,3 +1017,78 @@ work this session branched from that already-updated `main`.
 - `test/core-coverage-85` (from the previous session) is now moot as a
   separate merge target — already part of `main` via the earlier PR
   merge discovered this session.
+
+---
+
+## 2026-08-24 — Session 18 (branch `feature/windows-layer-opening-extraction`)
+
+**Context:** user reported the Phase 8 name-agnostic opening-extraction
+strategies were producing wrong results badly enough to call it a
+"major error/bug," and had a fix: every future project's DXF will
+include a dedicated `Windows` layer carrying dimension labels for both
+exterior and interior openings. Entered plan mode; two clarifying
+questions settled before planning (label format: width+height pair,
+confirmed; strategy role: primary-when-present, not additive) — see
+decisions.md for the full session.
+
+**Done:**
+
+- Investigated the real structure first, via a throwaway diagnostic
+  added to `Program.cs` (removed after use) run against the two real
+  sample files the user uploaded mid-session (`samples/new_floor_1.dxf`,
+  `samples/new_floor_2.dxf`) — confirmed the real layer name (`WINDOWS`),
+  entity shape (one TEXT/MTEXT per opening, both dimensions as two
+  numeric lines in one string), the width-then-height order (proven via
+  real 200cm door-height entries, contradicting the old "larger=height"
+  assumption), and the real OVK-distance gap separating exterior from
+  interior openings (a clean 3-5x gap in both files — much wider than
+  any prior convention).
+- Implemented `WindowsLayerStrategy` and wired it into `OpeningExtractor`
+  as the primary-when-present strategy: runs exclusively whenever a
+  `"windows"`-prefixed layer exists in the file, with no fallback to
+  the legacy strategies on 0 valid candidates (surfaces a new warning
+  instead, via a new `OpeningExtractionDiagnostics.UsedWindowsLayer`
+  flag).
+- **Two real bugs found and fixed by testing against the actual full
+  regression suite, not assumed correct:** (1) an initial substring
+  layer-name match wrongly claimed `floor1.dxf`'s unrelated Archicad
+  layers ("Archicad Window Markers"/"Archicad Windows") as the new
+  convention, silently zeroing out that file's (and `floor2`/`floor3`'s
+  sibling) opening counts — caught immediately by the pre-existing
+  regression tests, fixed by requiring a layer-name *prefix* match
+  instead of substring; (2) a real 1.55×3.55m floor-to-ceiling window
+  in `new_floor_1.dxf` was being rejected by the old 3.5m plausibility
+  cap — raised to 4.0m with margin.
+- Added `WindowsLayerStrategyTests` (11 tests), new `OpeningExtractorTests`
+  cases for the primary-when-present/no-fallback behavior, and two new
+  `OpeningExtractionRegressionTests` entries for the real samples.
+- Full solution `dotnet build` clean; all 147 tests pass
+  (`dotnet run --project tests/HVACrate2.Core.Tests`), including the
+  pre-existing `floor1-3.dxf` regression tests (confirmed still using
+  the legacy strategies, unaffected by this change).
+- Created branch `feature/windows-layer-opening-extraction` off `main`
+  per explicit user request mid-session (work had started on `main`
+  during the plan-mode investigation phase before the branch existed).
+
+- **User confirmed the extracted metrics are correct** after manually
+  checking them against the real drawings for both
+  `new_floor_1.dxf`/`new_floor_2.dxf` — closes out the earlier "not yet
+  validated against a known-correct reference" open item.
+- Added a new mandatory step to the in-app DXF-export instructions
+  (`InstructionsPage.xaml` + both language resource files): rename the
+  layer holding window/door dimension labels to `WINDOWS`, right after
+  the existing "create OVK layer" step — renumbered the remaining
+  export steps accordingly (English and Bulgarian). Verified visually
+  against the real built app via a direct window-handle screenshot
+  (`PrintWindow`), not just the resource dictionary.
+
+**Open for the next session:**
+
+- Real height (m) and north angle (°) for these two floors are unknown
+  — placeholders were used for extraction smoke-testing only; not
+  needed for the metrics the user already confirmed, but still needed
+  before a real Excel write for these floors.
+- `feature/windows-layer-opening-extraction` not yet merged to `main`.
+- Everything else carried over from Session 17 (Phase 4's clean-VM test
+  and static-site link, both outside this session's environment) is
+  unchanged.

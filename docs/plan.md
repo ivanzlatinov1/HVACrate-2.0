@@ -320,3 +320,20 @@ yet added as files anywhere in the repo).
       old approach no longer exist on disk, so this trade-off is only
       synthetic-tested, not re-validated against the real historical
       edge case.
+
+## Phase 9 — App icon and dark title bar, branch
+`feature/app-icon-dark-titlebar` (2026-08-24)
+
+- [x] App icon: generated a multi-resolution `.ico` (16-256px) from
+      user-supplied flame/snowflake artwork
+      (`src/HVACrate2.App/Assets/app-icon.ico`), wired in as
+      `<ApplicationIcon>` (the compiled `.exe`'s own icon — what shows
+      on the desktop/taskbar/Explorer when the exe is pinned or
+      shortcut-ed) and as `MainWindow`'s `Icon` (title bar/taskbar at
+      runtime).
+- [x] Native title bar forced into Windows' dark chrome via
+      `DwmSetWindowAttribute` (`Shared/DarkTitleBar.cs`), applied once
+      in `MainWindow`'s constructor via `SourceInitialized`. Independent
+      of the app's own light/dark content theme toggle — the top bar
+      stays dark regardless of which content theme is selected.
+      Verified visually against the real built app.

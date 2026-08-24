@@ -1017,3 +1017,41 @@ work this session branched from that already-updated `main`.
 - `test/core-coverage-85` (from the previous session) is now moot as a
   separate merge target — already part of `main` via the earlier PR
   merge discovered this session.
+
+---
+
+## 2026-08-24 — Session 19 (branch `feature/app-icon-dark-titlebar`)
+
+**Context:** continuation of the same day (after the Windows-layer
+opening-extraction session, which got its own branch/PR). User supplied
+a flame/snowflake `favicon.svg` and asked for a real app/desktop icon
+plus a black title bar matching a screenshot of the native Windows
+chrome.
+
+**Done:**
+
+- Built a proper multi-resolution `.ico` from the supplied artwork
+  (extracted the embedded PNG from the SVG wrapper, resized to 6 sizes,
+  packed into an ICO by hand since ImageMagick wasn't available) and
+  wired it in as both the compiled `.exe`'s own icon
+  (`<ApplicationIcon>`) and the runtime window icon.
+- Forced the native title bar into Windows' dark chrome via
+  `DwmSetWindowAttribute`, applied once in `MainWindow`'s constructor,
+  independent of the app's existing light/dark content-theme toggle —
+  the bar stays dark either way, per the user's request.
+- Verified visually against the real built app: screenshotted the title
+  bar (icon + dark chrome) via `PrintWindow`, and confirmed the
+  compiled exe's own icon via `Icon.ExtractAssociatedIcon`.
+- Branched off `main` directly (not off the still-unmerged
+  `feature/windows-layer-opening-extraction` branch), since this change
+  is unrelated to that feature — kept as its own independent PR.
+- Full solution `dotnet build` clean.
+
+**Open for the next session:**
+
+- `feature/app-icon-dark-titlebar` not yet merged to `main`.
+- `feature/windows-layer-opening-extraction` (previous session) also
+  still not merged.
+- Everything else carried over from Session 17/18 (Phase 4's clean-VM
+  test and static-site link, both outside this session's environment)
+  is unchanged.

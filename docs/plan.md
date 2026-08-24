@@ -337,3 +337,42 @@ yet added as files anywhere in the repo).
       of the app's own light/dark content theme toggle — the top bar
       stays dark regardless of which content theme is selected.
       Verified visually against the real built app.
+## Phase 9 — "Windows" layer becomes the primary opening-extraction
+signal, branch `feature/windows-layer-opening-extraction` (2026-08-24)
+
+- [x] New `WindowsLayerStrategy` (`src/HVACrate2.Core/Openings/`) —
+      primary detection path whenever a document has a layer whose name
+      starts with `"windows"` (case-insensitive); parses one TEXT/MTEXT
+      label per opening carrying both dimensions as two numeric lines
+      in a single entity, width-then-height order (confirmed real, not
+      the old "larger = height" rule). `OpeningExtractor` runs it
+      exclusively when present (legacy `BlockAttributeStrategy`/
+      `PerpendicularLabeledLineStrategy` don't run at all for that
+      floor) and does not fall back to them on 0 valid candidates — a
+      new `OpeningExtractionDiagnostics.UsedWindowsLayer` flag plus a
+      dedicated warning surface this instead of silently blending
+      conventions. See decisions.md, 2026-08-24, for the two real bugs
+      caught and fixed while validating (a substring-match false
+      positive on Archicad's unrelated "Archicad Windows" layer name,
+      and a real 3.55m floor-to-ceiling window rejected by the old
+      3.5m plausibility cap).
+- [x] Validated against two real samples (`samples/new_floor_1.dxf`,
+      `samples/new_floor_2.dxf`): 11/15 and 16/29 candidates accepted
+      respectively, matching manual OVK-distance analysis exactly, with
+      all rejections being genuine interior openings. New
+      `WindowsLayerStrategyTests`, `OpeningExtractorTests`, and
+      `OpeningExtractionRegressionTests` cases added; full 147-test
+      suite passes; `floor1-3.dxf` (no `Windows` layer) confirmed
+      unaffected — still using the legacy strategies as before.
+- [x] **Validated by the user against the real drawings** —
+      user manually checked the extracted metrics for
+      `new_floor_1.dxf`/`new_floor_2.dxf` and confirmed they match.
+      Closes the earlier "not yet validated against a known-correct
+      reference" item.
+- [x] Instructions page updated with the new required step: rename the
+      layer holding window/door dimension labels to `WINDOWS`, right
+      after the existing "create OVK layer" step (both English and
+      Bulgarian). Verified visually against the real built app.
+- [ ] Real height (m) and north angle (°) for these two floors are
+      unknown — a placeholder (2.8m / 0°) was used for smoke-testing
+      extraction only, not for any Excel-write validation.

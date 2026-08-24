@@ -7,6 +7,7 @@
   <ItemGroup>
     <!-- Blank Excel template, bundled with the app so it works regardless of install location. -->
     <None Include="..\..\output\Топлотехника V6.0.16.xlsx" Link="Assets\Template.xlsx" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Assets\app-icon.ico" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -17,6 +18,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>HVACrate2</AssemblyName>
     <Version>1.0.0</Version>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>

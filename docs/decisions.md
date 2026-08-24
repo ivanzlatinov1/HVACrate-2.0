@@ -1944,6 +1944,53 @@ which lives outside this repo entirely.
 
 ---
 
+## 2026-08-24 — App icon and dark title bar, branch
+`feature/app-icon-dark-titlebar`
+
+**Decision:** the app now has a real icon (a flame/snowflake mark the
+user supplied) instead of the .NET default, and the native title bar is
+forced dark permanently, independent of the app's existing light/dark
+content-theme toggle.
+
+**Icon:** the user supplied `favicon.svg`, which turned out to be an
+SVG wrapper around a single embedded 1024×1024 base64 PNG (a common
+export shape from AI image tools, confirmed by C2PA provenance metadata
+in the file — not itself relevant to the app, just explains the
+wrapper). Extracted the PNG, resized it to 16/32/48/64/128/256px with
+high-quality bicubic interpolation, and packed those into a proper
+multi-resolution `.ico` (each size stored PNG-compressed inside the ICO
+container, which every supported Windows version reads natively) —
+`ImageMagick` wasn't available in this environment, so this was done
+directly via `System.Drawing` + a manually-written ICONDIR/ICONDIRENTRY
+header. Wired into `HVACrate2.App.csproj` as `<ApplicationIcon>` (sets
+the icon embedded in the compiled `.exe` itself — what File
+Explorer/the taskbar/a desktop shortcut show) and into `MainWindow.xaml`
+as `Icon="Assets/app-icon.ico"` (the runtime title-bar/taskbar icon).
+The large intermediate PNG (~1.5MB) was deleted after building the
+`.ico`; only the compiled icon (~140KB) is kept in the repo.
+
+**Dark title bar:** implemented via `DwmSetWindowAttribute`
+(`DWMWA_USE_IMMERSIVE_DARK_MODE`, attribute `20` on Windows 11/10 2004+,
+falling back to `19` for older Windows 10 builds) rather than a custom
+`WindowChrome` replacing the native title bar — the user's request
+("the top bars to be black, the ones from the screenshot") showed the
+*native* Windows title bar/buttons, just wanting the color changed, not
+a custom-drawn replacement. This keeps the native minimize/maximize/
+close buttons, snap behavior, and drag/resize handling completely
+unchanged, only recoloring the chrome. Applied once, unconditionally, in
+`MainWindow`'s constructor (`Shared/DarkTitleBar.cs`, called from
+`SourceInitialized` since the native `HWND` doesn't exist yet at
+constructor time) — deliberately **not** wired to `ThemeManager`'s
+light/dark content toggle, since the user asked for the bar to always
+be black, not to follow the existing theme switch.
+
+**Verified visually against the real built app**, not just by
+inspecting XAML: launched the built `.exe`, used `PrintWindow` (direct
+window-handle capture, since plain screen-coordinate capture grabbed
+the wrong output in this environment) to screenshot the title bar
+showing the new icon and dark chrome, and `Icon.ExtractAssociatedIcon`
+on the compiled `.exe` to confirm the file's own icon (not just the
+in-app window icon) is set correctly.
 ## 2026-08-24 — Phase 9: "Windows" layer becomes the primary opening-
 extraction signal, branch `feature/windows-layer-opening-extraction`
 

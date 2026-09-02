@@ -18,8 +18,10 @@ namespace HVACrate2.Core.Openings;
 /// a substring match would have wrongly claimed as this new convention, silently switching that file
 /// onto a strategy that finds nothing in it and dropping every real opening it used to find via the
 /// legacy strategies — caught by the existing regression tests before shipping.
+/// Runs alongside <see cref="WindowsLayerAttributeStrategy"/> whenever a windows-prefixed layer is
+/// present — see that class for the older INSERT+ATTRIB marker convention this one doesn't cover.
 /// </summary>
-internal sealed class WindowsLayerStrategy : IOpeningCandidateStrategy
+internal sealed class WindowsLayerTextStrategy : IOpeningCandidateStrategy
 {
     public string Name => "WindowsLayer";
 

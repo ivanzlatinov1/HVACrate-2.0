@@ -376,3 +376,26 @@ signal, branch `feature/windows-layer-opening-extraction` (2026-08-24)
 - [ ] Real height (m) and north angle (°) for these two floors are
       unknown — a placeholder (2.8m / 0°) was used for smoke-testing
       extraction only, not for any Excel-write validation.
+
+## Phase 10 — Windows-layer attribute-marker strategy, branch
+`fix/windows-layer-attribute-marker-strategy` (2026-09-02)
+
+- [x] **Fixed:** a real DXF whose window markers use the *older*
+      INSERT+ATTRIB convention (`AC_MarkerText_2`/`_3`), but whose
+      marker geometry happens to sit on a layer named `Windows`,
+      extracted 0 openings — the windows-layer gate locked out the one
+      legacy strategy that could read it. New
+      `WindowsLayerAttributeStrategy` (`src/HVACrate2.Core/Openings/`)
+      runs alongside the renamed `WindowsLayerTextStrategy` whenever a
+      windows-prefixed layer is present, both scoped to that layer only
+      — still no fallback to the unscoped legacy strategies. Width/height
+      assigned by known tag name first (not magnitude — 2 of 73 real
+      markers in the sample file have width > height, which would have
+      been swapped by a magnitude-only rule), falling back to the
+      magnitude heuristic for unrecognized tags. See decisions.md,
+      2026-09-02, for the full investigation and validation.
+- [x] Validated against the real file that surfaced the bug
+      (`samples/new_block_attribute_windows_layer.dxf`, gitignored/
+      local-only): 0 → 25 real exterior openings extracted, confirmed
+      marker (233×203cm) correctly not swapped. No regression on the 5
+      pre-existing samples (161/161 tests pass, 0 skipped).

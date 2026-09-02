@@ -1127,3 +1127,56 @@ decisions.md for the full session.
 - Everything else carried over from Session 17 (Phase 4's clean-VM test
   and static-site link, both outside this session's environment) is
   unchanged.
+
+---
+
+## 2026-09-02 — Session 20 (branch `fix/windows-layer-attribute-marker-strategy`)
+
+**Context:** user supplied a new real DXF (`new block.dxf`, Desktop)
+containing a `Windows` layer, and reported it extracted zero
+windows/doors.
+
+**Done:**
+
+- Investigated the raw DXF directly rather than assuming a parsing bug:
+  found its window markers use the *older* `INSERT` (`W Marker NN`) +
+  `ATTRIB` convention (`AC_MarkerText_2`=width/`AC_MarkerText_3`=height,
+  73 real markers confirmed), but the marker's own `INSERT` sits on a
+  layer literally named `Windows` — tripping the 2026-08-24 session's
+  "windows-prefixed layer means the new TEXT-label convention, run it
+  exclusively, no fallback" gate, which then found nothing (no bare
+  TEXT/MTEXT exists in this file) while the strategy that could actually
+  read it (`BlockAttributeStrategy`) never got to run.
+- While designing the fix, found and confirmed against the real file's
+  own data that 2 of the 73 markers have a tagged width *larger* than
+  the tagged height (233×203, 180×100 cm) — ruling out reusing the
+  existing "larger value = height" magnitude heuristic naively for a
+  windows-layer-scoped variant, since it would silently swap those two.
+- Added `WindowsLayerAttributeStrategy`, running alongside the renamed
+  `WindowsLayerTextStrategy` (was `WindowsLayerStrategy`) whenever a
+  windows-prefixed layer is detected, both scoped strictly to that
+  layer — the "no fallback to unscoped legacy strategies" rule from
+  2026-08-24 is preserved. Width/height assigned by known tag name
+  first, magnitude heuristic as fallback. Extracted a small shared
+  `AttributeNumberParsing` helper used by both this and
+  `BlockAttributeStrategy`. See decisions.md, 2026-09-02, for full
+  detail including the `OpeningDeduper` cross-strategy-merge check
+  (already worked, no new code needed — added a test instead).
+- Copied the user's real file into `samples/` (gitignored, local-only,
+  matching existing convention) as
+  `new_block_attribute_windows_layer.dxf` and added a real-sample
+  regression test.
+- **Validated:** 161/161 tests pass (147 pre-existing + 14 new), 0
+  skipped, `dotnet build` clean. The real sample went from 0 openings
+  (the reported bug) to 25 real exterior openings extracted, with the
+  confirmed 233×203cm marker correctly not swapped. Confirmed no
+  regression on the 5 pre-existing samples — `floor1-3.dxf` have no
+  windows-prefixed layer at all, and `new_floor_1/2.dxf` were directly
+  inspected to have only `MTEXT` (no `INSERT`) on their `WINDOWS`
+  layer, so the new strategy contributes zero extra candidates there.
+
+**Open for the next session:**
+
+- `fix/windows-layer-attribute-marker-strategy` not yet merged to `main`.
+- Everything else carried over from prior sessions (Phase 4 packaging,
+  Floor Heating's open items) is unchanged.

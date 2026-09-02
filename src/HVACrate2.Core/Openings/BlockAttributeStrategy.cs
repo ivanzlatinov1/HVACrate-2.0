@@ -22,11 +22,7 @@ internal sealed class BlockAttributeStrategy : IOpeningCandidateStrategy
             e.Kind == FlatKind.Insert && e.Attributes.Count >= 2 &&
             !WordHints.ContainsAny(e.LayerName, WordHints.NonOpening) && !WordHints.ContainsAny(e.BlockName, WordHints.NonOpening)))
         {
-            var numeric = e.Attributes.Values
-                .Select(v => TextNumberParsing.TryParseNumber(v, out double n) ? (double?)n : null)
-                .Where(n => n is >= DimensionRange.MinCm and <= DimensionRange.MaxCm)
-                .Select(n => n!.Value)
-                .ToList();
+            var numeric = AttributeNumberParsing.ParseInRangeNumbers(e.Attributes.Values);
             if (numeric.Count < 2) continue;
 
             double a = numeric[0], b = numeric[1];

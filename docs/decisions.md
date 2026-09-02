@@ -2109,3 +2109,97 @@ screenshots of the rendered Instructions page via `PrintWindow`
 grabbed the wrong output in this environment) confirming the new step
 renders with the same bold "(mandatory)" styling as the OVK step, and
 every step after it renumbered correctly through step 10.
+
+---
+
+## 2026-09-02 — Windows-layer opening extraction: added a second,
+attribute-scoped strategy after a real file broke the "windows layer
+means the new TEXT convention" assumption
+
+**Context:** user reported a real DXF (`new block.dxf`) with a layer
+literally named `Windows` extracted **zero** windows/doors, despite the
+file containing valid marker data. Investigated the raw DXF directly
+(not just the pipeline's output).
+
+**Root cause found:** `OpeningExtractor.HasWindowsLayer`-style detection
+(any entity's layer name starts with `windows`) had been used since the
+2026-08-24 session as proof a file uses the *newer* bare-TEXT-label
+convention (`WindowsLayerStrategy`, run exclusively, no fallback to the
+legacy strategies even on 0 candidates — a deliberate anti-false-positive
+design). This file broke that assumption: its window markers use the
+**older** `INSERT` (block `W Marker NN`) + `ATTRIB` convention
+(`AC_MarkerText_2`=width, `AC_MarkerText_3`=height — the exact tag
+mapping confirmed back in the 2026-08-04 session), but the marker's own
+`INSERT` (plus its child `ARC`/`LINE`/`ATTDEF` definition geometry) sits
+on a layer literally named `Windows` — a naming coincidence, not the new
+convention. This tripped the windows-layer gate, locked the extractor
+onto the TEXT-only strategy (which found nothing — no bare TEXT/MTEXT
+exists in this file), and the one strategy that could actually read it
+(`BlockAttributeStrategy`) never ran because of the "no fallback" rule.
+Confirmed directly against the raw DXF: 73 real markers with valid
+`AC_MarkerText_2`/`_3` attribute pairs (e.g. width=233cm/height=203cm).
+
+**Extra finding, confirmed against the real file's own data:** 2 of
+those 73 markers have the tagged width *larger* than the tagged height
+(233×203 and 180×100 cm). This rules out reusing
+`BlockAttributeStrategy`'s existing "larger value = height" magnitude
+heuristic as-is for a windows-layer-scoped variant — it would have
+silently swapped width/height on those two real openings. `.NET`
+`Dictionary<TKey,TValue>` enumeration order is also not a usable
+substitute (not a contract), so "first two values in order" isn't a
+safe alternative either.
+
+**Decision:** added a second strategy, `WindowsLayerAttributeStrategy`
+(`src/HVACrate2.Core/Openings/WindowsLayerAttributeStrategy.cs`), that
+runs *alongside* the existing one (renamed `WindowsLayerTextStrategy` for
+symmetry, `Name` kept as `"WindowsLayer"` — a diagnostics/test contract,
+not worth churning) whenever a windows-prefixed layer is detected — both
+strategies scoped strictly to entities on that layer, still with **zero
+fallback** to the unscoped legacy strategies. This preserves the entire
+rationale of the 2026-08-24 exclusivity rule (never blend in an unscoped
+whole-document scan) while covering both known marker shapes that can
+appear on that layer. Width/height assignment is **tag-name-first**: if
+`AC_MarkerText_2`/`AC_MarkerText_3` are present, use them directly;
+otherwise fall back to the magnitude heuristic so an unrecognized
+windows-layer marker convention still degrades gracefully instead of
+being dropped. `ExteriorToleranceM` reused `BlockAttributeStrategy`'s
+existing `2.5m` (same INSERT+ATTRIB marker shape/assumption) — validated
+against the real file rather than assumed: of 64 raw candidates, exactly
+39 were rejected as "not near the exterior boundary (OVK)" with no other
+rejection reasons, a clean split with no evidence of false exterior
+acceptances, so the constant was left as-is rather than tuned further.
+Extracted a small shared `AttributeNumberParsing.ParseInRangeNumbers`
+helper (`OpeningCandidate.cs`) used by both `BlockAttributeStrategy` and
+the new strategy, for the "parse + plausibility-filter" step only — the
+width/height *assignment* logic (where the two strategies legitimately
+differ) was deliberately left unshared.
+
+**Also confirmed, no code change needed:** `OpeningDeduper` already
+merges candidates from different strategies for the same physical
+opening purely by geometry (OVK edge + anchor proximity + dimension
+closeness), never by strategy identity — added a test proving this
+rather than writing new merge logic.
+
+**Validated:**
+- All 161 tests pass (147 pre-existing + 14 new:
+  `WindowsLayerAttributeStrategyTests` (11), 3 new `OpeningExtractorTests`
+  cases, one renamed for clarity, plus the new real-sample regression
+  test below), 0 skipped, `dotnet build` clean.
+- **Real sample** (`samples/new_block_attribute_windows_layer.dxf`, the
+  user's actual file, gitignored/local-only per existing `samples/`
+  convention — not committed): went from **0 openings extracted
+  (before this fix) to 25 real exterior openings** (64 raw candidates,
+  39 correctly rejected as interior, 0 dimension-implausibility
+  rejections). The confirmed 233×203cm marker came out as
+  width=2.33m/height=2.03m — not swapped, confirming the tag-name-first
+  assignment works against real data, not just the synthetic test case.
+- **No regression on existing samples:** `floor1-3.dxf` have no
+  `windows`-prefixed layer at all (unaffected, legacy path only).
+  `new_floor_1.dxf`/`new_floor_2.dxf` — confirmed by direct inspection
+  of the raw DXF text — have **only `MTEXT`** on the `WINDOWS` layer, no
+  `INSERT` entities, so `WindowsLayerAttributeStrategy` contributes zero
+  extra candidates there; the full regression suite (unchanged
+  assertions, renamed `RealSample_WithWindowsLayer_UsesWindowsLayerStrategies`
+  for the plural) still passes for both.
+
+**Branch:** `fix/windows-layer-attribute-marker-strategy`, off `main`.

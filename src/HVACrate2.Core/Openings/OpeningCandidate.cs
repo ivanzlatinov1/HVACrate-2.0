@@ -14,6 +14,20 @@ internal static class DimensionRange
     public const double MaxCm = 500.0;
 }
 
+/// <summary>Shared "parse + plausibility-filter" step for INSERT ATTRIB values, used by every
+/// strategy that reads numeric dimensions off block attributes. Deliberately stops short of
+/// assigning which parsed number is width vs. height — that decision differs per strategy (e.g.
+/// magnitude heuristic vs. known-tag lookup) and belongs in the strategy itself.</summary>
+internal static class AttributeNumberParsing
+{
+    public static List<double> ParseInRangeNumbers(IEnumerable<string> rawValues)
+        => rawValues
+            .Select(v => TextNumberParsing.TryParseNumber(v, out double n) ? (double?)n : null)
+            .Where(n => n is >= DimensionRange.MinCm and <= DimensionRange.MaxCm)
+            .Select(n => n!.Value)
+            .ToList();
+}
+
 /// <summary>A candidate opening produced by one detection strategy, carrying an evidence trail — merged/scored/filtered by <see cref="OpeningExtractor"/> before becoming a public <see cref="Models.Opening"/>.</summary>
 internal sealed class OpeningCandidate
 {

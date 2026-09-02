@@ -22,7 +22,8 @@ internal static class OpeningExtractor
     /// </summary>
     private const double MaxOpeningM = 4.0;
 
-    private static readonly IOpeningCandidateStrategy[] WindowsLayerStrategies = [new WindowsLayerStrategy()];
+    private static readonly IOpeningCandidateStrategy[] WindowsLayerStrategies =
+        [new WindowsLayerTextStrategy(), new WindowsLayerAttributeStrategy()];
 
     private static readonly IOpeningCandidateStrategy[] LegacyStrategies =
     [
@@ -43,7 +44,7 @@ internal static class OpeningExtractor
         var explicitInteriorSegments = WallGeometryClassifier.CollectExplicitInteriorSegments(entities);
         diagnostics.WallLikePointsFound = wallLikeSegments.Count;
 
-        bool usingWindowsLayer = WindowsLayerStrategy.HasWindowsLayer(entities);
+        bool usingWindowsLayer = WindowsLayerTextStrategy.HasWindowsLayer(entities);
         diagnostics.UsedWindowsLayer = usingWindowsLayer;
         var strategies = usingWindowsLayer ? WindowsLayerStrategies : LegacyStrategies;
 
@@ -83,7 +84,7 @@ internal static class OpeningExtractor
         if (openings.Count == 0)
         {
             diagnostics.Warnings.Add(usingWindowsLayer
-                ? "0 openings detected — a 'Windows' layer was found but produced no valid exterior opening; not falling back to the legacy detection strategies, since blending an unrelated convention risks reintroducing the errors the 'Windows'-layer convention was adopted to fix. Check the layer's label format and its distance to the OVK boundary."
+                ? "0 openings detected — a 'Windows' layer was found but none of the windows-layer detection strategies (text-pair label, attribute-block marker) produced a valid exterior opening; not falling back to the legacy detection strategies, since blending an unrelated convention risks reintroducing the errors the 'Windows'-layer convention was adopted to fix. Check the layer's label/marker format and its distance to the OVK boundary."
                 : wallLikeSegments.Count > 0
                     ? "0 openings detected — extraction confidence low; no recognized opening geometry/relationship found despite wall geometry being present near the OVK boundary."
                     : "0 openings detected, and no wall-like geometry was found near the OVK boundary either — check that wall geometry exists close to the traced OVK outline in this file.");

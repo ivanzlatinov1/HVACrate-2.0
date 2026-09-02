@@ -47,6 +47,26 @@ public class OpeningExtractorTests
     private static void AddWindowsLabel(DxfDocument doc, string text, (double x, double y) posCm)
         => doc.Entities.Add(new MText(text, new Vector2(posCm.x, posCm.y), 5) { Layer = new Layer("WINDOWS") });
 
+    /// <summary>Same shape as <see cref="AddAttributeInsert"/> (INSERT+ATTRIB marker), but placed on
+    /// a "windows"-prefixed layer — the older marker convention living on the newer convention's
+    /// layer name, which is the exact bug scenario this strategy was added to cover.</summary>
+    private static Insert AddWindowsLayerAttributeInsert(DxfDocument doc, string blockName, (double x, double y) posCm, params string[] numericValues)
+    {
+        var block = new Block(blockName);
+        var attrTags = new List<string>();
+        for (int i = 0; i < numericValues.Length; i++)
+        {
+            string tag = $"V{i}";
+            attrTags.Add(tag);
+            block.AttributeDefinitions.Add(new AttributeDefinition(tag));
+        }
+        var insert = new Insert(block, new Vector2(posCm.x, posCm.y)) { Layer = new Layer("WINDOWS") };
+        for (int i = 0; i < numericValues.Length; i++)
+            insert.Attributes.AttributeWithTag(attrTags[i]).Value = numericValues[i];
+        doc.Entities.Add(insert);
+        return insert;
+    }
+
     [Test]
     public async Task Extract_CandidateFarFromOvk_IsRejectedAsInterior()
     {
@@ -160,11 +180,12 @@ public class OpeningExtractorTests
     }
 
     [Test]
-    public async Task Extract_WindowsLayerPresent_UsesOnlyWindowsLayerStrategy_IgnoringLegacyCandidates()
+    public async Task Extract_WindowsLayerPresent_UsesOnlyWindowsLayerStrategies_IgnoringLegacyCandidates()
     {
         var doc = NewDoc();
         AddLeftEdgeWall(doc);
-        // A legacy-convention candidate that would normally be detected fine on its own.
+        // A legacy-convention candidate (unscoped INSERT+ATTRIB, elsewhere in the document) that
+        // would normally be detected fine on its own via BlockAttributeStrategy.
         AddAttributeInsert(doc, "Zorp", (0, 200), "80", "210");
         // The new, authoritative convention, also present in the same file.
         AddWindowsLabel(doc, "90\n200", (0, 500));
@@ -173,10 +194,47 @@ public class OpeningExtractorTests
 
         await Assert.That(diagnostics.UsedWindowsLayer).IsTrue();
         await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("WindowsLayer")).IsTrue();
+        // "BlockAttribute" is the *legacy*, unscoped strategy — still excluded. This is distinct
+        // from "WindowsLayerAttribute", the new windows-layer-*scoped* strategy (covered below),
+        // which legitimately runs alongside "WindowsLayer" whenever the windows layer is present.
         await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("BlockAttribute")).IsFalse();
         await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("PerpendicularLabeledLine")).IsFalse();
         await Assert.That(openings.Count).IsEqualTo(1);
         await Assert.That(openings[0].DimensionSource).IsEqualTo("windows-layer");
+    }
+
+    [Test]
+    public async Task Extract_WindowsLayerPresentViaAttributeMarkerOnly_UsesWindowsLayerAttributeStrategy()
+    {
+        // The exact bug scenario: an old-convention INSERT+ATTRIB marker whose own layer happens to
+        // be named "WINDOWS" — no bare TEXT/MTEXT label anywhere in the file for WindowsLayerText to find.
+        var doc = NewDoc();
+        AddLeftEdgeWall(doc);
+        AddWindowsLayerAttributeInsert(doc, "W Marker 22", (0, 400), "80", "210");
+
+        var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
+
+        await Assert.That(diagnostics.UsedWindowsLayer).IsTrue();
+        await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("WindowsLayerAttribute")).IsTrue();
+        await Assert.That(diagnostics.CandidatesByStrategy.ContainsKey("BlockAttribute")).IsFalse();
+        await Assert.That(openings.Count).IsEqualTo(1);
+        await Assert.That(openings[0].DimensionSource).IsEqualTo("attribute");
+        await Assert.That(openings[0].WidthM).IsEqualTo(0.80).Within(0.001);
+        await Assert.That(openings[0].HeightM).IsEqualTo(2.10).Within(0.001);
+    }
+
+    [Test]
+    public async Task Extract_WindowsLayerPresentWithBothTextAndAttributeMarkerForSameOpening_DedupesAcrossStrategies()
+    {
+        var doc = NewDoc();
+        AddLeftEdgeWall(doc);
+        AddWindowsLabel(doc, "80\n210", (0, 400));
+        AddWindowsLayerAttributeInsert(doc, "W Marker 22", (0, 400), "80", "210");
+
+        var (openings, diagnostics) = OpeningExtractor.Extract(doc, RectOvkMeters, northDeg: 0, ccwSign: 1, coordDivisor: 100);
+
+        await Assert.That(openings.Count).IsEqualTo(1);
+        await Assert.That(openings[0].Evidence.Count).IsGreaterThanOrEqualTo(2);
     }
 
     [Test]

@@ -2,7 +2,7 @@ using HVACrate2.Core.Openings;
 
 namespace HVACrate2.Core.Tests;
 
-public class WindowsLayerStrategyTests
+public class WindowsLayerTextStrategyTests
 {
     private static FlatEntity TextEntity(string layer, string text, (double x, double y)? at = null)
         => new()
@@ -21,7 +21,7 @@ public class WindowsLayerStrategyTests
     {
         var entity = TextEntity("WINDOWS", "150\n300");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found.Count).IsEqualTo(1);
         await Assert.That(found[0].DimensionSource).IsEqualTo("windows-layer");
@@ -32,10 +32,10 @@ public class WindowsLayerStrategyTests
     {
         // A real confirmed case (new_floor_1.dxf): 270cm wide x 200cm tall door — width is the LARGER
         // number here. The old BlockAttributeStrategy "larger value = height" rule would wrongly swap
-        // this to width=200/height=270; WindowsLayerStrategy must preserve the label's own order instead.
+        // this to width=200/height=270; WindowsLayerTextStrategy must preserve the label's own order instead.
         var entity = TextEntity("WINDOWS", "270\n200");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found[0].WidthM!.Value).IsEqualTo(2.70).Within(0.001);
         await Assert.That(found[0].HeightM!.Value).IsEqualTo(2.00).Within(0.001);
@@ -46,7 +46,7 @@ public class WindowsLayerStrategyTests
     {
         var entity = TextEntity("Windows-EXT-2", "80\n210");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found.Count).IsEqualTo(1);
     }
@@ -56,7 +56,7 @@ public class WindowsLayerStrategyTests
     {
         var entity = TextEntity("РАЗМЕРИ", "80\n210");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found).IsEmpty();
     }
@@ -68,7 +68,7 @@ public class WindowsLayerStrategyTests
         // the strategy strips non-numeric tokens) — must not be mistaken for a dimension pair.
         var entity = TextEntity("WINDOWS", "50");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found).IsEmpty();
     }
@@ -78,7 +78,7 @@ public class WindowsLayerStrategyTests
     {
         var entity = TextEntity("WINDOWS", "П-1");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found).IsEmpty();
     }
@@ -88,7 +88,7 @@ public class WindowsLayerStrategyTests
     {
         var entity = TextEntity("WINDOWS", "80\n210\n50");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found).IsEmpty();
     }
@@ -98,7 +98,7 @@ public class WindowsLayerStrategyTests
     {
         var entity = TextEntity("WINDOWS", "5\n999");
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found).IsEmpty();
     }
@@ -108,7 +108,7 @@ public class WindowsLayerStrategyTests
     {
         var entity = TextEntity("WINDOWS", "80\n210", at: (12.5, 34.0));
 
-        var found = new WindowsLayerStrategy().Detect(Ctx(entity));
+        var found = new WindowsLayerTextStrategy().Detect(Ctx(entity));
 
         await Assert.That(found[0].AnchorM.x).IsEqualTo(12.5).Within(0.001);
         await Assert.That(found[0].AnchorM.y).IsEqualTo(34.0).Within(0.001);
@@ -118,19 +118,19 @@ public class WindowsLayerStrategyTests
     public async Task HasWindowsLayer_DetectsPresenceCaseInsensitively()
     {
         var entities = new List<FlatEntity> { TextEntity("WINDOWS", "80\n210") };
-        await Assert.That(WindowsLayerStrategy.HasWindowsLayer(entities)).IsTrue();
+        await Assert.That(WindowsLayerTextStrategy.HasWindowsLayer(entities)).IsTrue();
     }
 
     [Test]
     public async Task HasWindowsLayer_NoMatchingLayer_ReturnsFalse()
     {
         var entities = new List<FlatEntity> { TextEntity("РАЗМЕРИ", "80\n210") };
-        await Assert.That(WindowsLayerStrategy.HasWindowsLayer(entities)).IsFalse();
+        await Assert.That(WindowsLayerTextStrategy.HasWindowsLayer(entities)).IsFalse();
     }
 
     [Test]
     public async Task Name_IsWindowsLayer()
     {
-        await Assert.That(new WindowsLayerStrategy().Name).IsEqualTo("WindowsLayer");
+        await Assert.That(new WindowsLayerTextStrategy().Name).IsEqualTo("WindowsLayer");
     }
 }
